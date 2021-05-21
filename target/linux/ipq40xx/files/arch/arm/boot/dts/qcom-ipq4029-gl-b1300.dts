@@ -20,8 +20,23 @@
 #include <dt-bindings/soc/qcom,tcsr.h>
 
 / {
-	model = "GL.iNet GL-B1300";
+	model = "GL.iNet GL-B1300 (Convexa-B)";
 	compatible = "glinet,gl-b1300";
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@87500000 {
+			compatible = "ramoops";
+			reg = <0x87500000 0x600000>;
+			console-size = <0x200000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
 
 	aliases {
 		led-boot = &power;
@@ -124,6 +139,7 @@
 			label = "green:power";
 			gpios = <&tlmm 4 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
+			panic-indicator;
 		};
 
 		mesh {
