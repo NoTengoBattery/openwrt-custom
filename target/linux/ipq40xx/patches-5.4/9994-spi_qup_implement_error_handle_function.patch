@@ -1,0 +1,71 @@
+From: Oever González <software@notengobattery.com>
+Subject: [PATCH] SPI: QUP: implement error handle function
+Date: Thu, 23 Jul 2020 22:19:28 -0600
+
+Implement the `handle_err` function for the SPI QUP driver. Also, remove calls
+to two deprecated kernel API functions, replacing them with the currently
+recommended versions.
+
+Signed-off-by: Oever González <software@notengobattery.com>
+---
+--- a/drivers/spi/spi-qup.c
++++ a/drivers/spi/spi-qup.c
+@@ -417,9 +417,9 @@ static void spi_qup_dma_terminate(struct spi_master *master,
+ 				  struct spi_transfer *xfer)
+ {
+ 	if (xfer->tx_buf)
+-		dmaengine_terminate_all(master->dma_tx);
++		dmaengine_terminate_sync(master->dma_tx);
+ 	if (xfer->rx_buf)
+-		dmaengine_terminate_all(master->dma_rx);
++		dmaengine_terminate_sync(master->dma_rx);
+ }
+ 
+ static u32 spi_qup_sgl_get_nents_len(struct scatterlist *sgl, u32 max,
+@@ -932,11 +932,11 @@ static int spi_qup_init_dma(struct spi_master *master, resource_size_t base)
+ 	int ret;
+ 
+ 	/* allocate dma resources, if available */
+-	master->dma_rx = dma_request_slave_channel_reason(dev, "rx");
++	master->dma_rx = dma_request_chan(dev, "rx");
+ 	if (IS_ERR(master->dma_rx))
+ 		return PTR_ERR(master->dma_rx);
+ 
+-	master->dma_tx = dma_request_slave_channel_reason(dev, "tx");
++	master->dma_tx = dma_request_chan(dev, "tx");
+ 	if (IS_ERR(master->dma_tx)) {
+ 		ret = PTR_ERR(master->dma_tx);
+ 		goto err_tx;
+@@ -992,6 +992,24 @@ static void spi_qup_set_cs(struct spi_device *spi, bool val)
+ 		writel_relaxed(spi_ioc, controller->base + SPI_IO_CONTROL);
+ }
+ 
++static void spi_qup_handle_err(struct spi_master *master,
++				 struct spi_message *msg)
++{
++	struct spi_qup *controller = spi_master_get_devdata(master);
++	unsigned long flags;
++
++	spin_lock_irqsave(&controller->lock, flags);
++	controller->error    = 0;
++	controller->rx_bytes = 0;
++	controller->tx_bytes = 0;
++	spin_unlock_irqrestore(&controller->lock, flags);
++
++	spi_qup_set_state(controller, QUP_STATE_RESET);
++
++	if (spi_qup_is_dma_xfer(controller->mode))
++		spi_qup_dma_terminate(master, controller->xfer);
++}
++
+ static int spi_qup_probe(struct platform_device *pdev)
+ {
+ 	struct spi_master *master;
+@@ -1063,6 +1081,7 @@ static int spi_qup_probe(struct platform_device *pdev)
+ 	master->bits_per_word_mask = SPI_BPW_RANGE_MASK(4, 32);
+ 	master->max_speed_hz = max_freq;
+ 	master->transfer_one = spi_qup_transfer_one;
++	master->handle_err = spi_qup_handle_err;
+ 	master->dev.of_node = pdev->dev.of_node;
+ 	master->auto_runtime_pm = true;
+ 	master->dma_alignment = dma_get_cache_alignment();
