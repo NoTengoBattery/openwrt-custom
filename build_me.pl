@@ -15,26 +15,27 @@ if ( glob($nargs) != 1 ) {
 }
 
 use constant {
-    VERSION           => '3.0.0-rc1',
-    TARGET            => $ARGV[0],
     DIST              => 'NoTengoBattery',
-    ROOT_URL          => 'notengobattery.com',
     DOWNLOAD_ROOT_URL => 'downloads.notengobattery.com',
+    ISSUES            => 'issues',
+    LINUX_TARGET      => 'target/linux'
     PROJECTS          => 'projects',
     PROJECT_NAME      => "openwrt-" . $ARGV[0],
-    ISSUES            => 'issues',
-    NOTES             => 'notes',
-    LINUX_TARGET      => 'target/linux'
+    RELEASES          => 'releases',
+    RELEASE_NOTES     => 'release-notes',
+    ROOT_URL          => 'notengobattery.com',
+    TARGET            => $ARGV[0],
+    VERSION           => 'v3.0.0-rc1',
 };
 
 my ($releaseURL) =
-  'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, VERSION );
+  'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, RELEASES, VERSION );
 my ($issuesURL) =
-  'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, VERSION, ISSUES );
+  'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, RELEASES, VERSION, ISSUES );
 my ($downloadURL) =
-  'https://' . catdir( DOWNLOAD_ROOT_URL, PROJECTS, PROJECT_NAME, VERSION );
+  'https://' . catdir( DOWNLOAD_ROOT_URL, PROJECTS, 'openwrt-' . VERSION );
 my ($supportURL) =
-  'https://' . catdir( DOWNLOAD_ROOT_URL, PROJECTS, PROJECT_NAME, NOTES );
+  'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, RELEASES, VERSION, RELEASE_NOTES );
 my ($curDir)            = curdir();
 my ($dSeed)             = catdir( glob($curDir), 'seeds' );
 my ($dScripts)          = catdir( glob($curDir), 'scripts' );
