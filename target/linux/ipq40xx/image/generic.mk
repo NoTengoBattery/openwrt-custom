@@ -541,7 +541,7 @@ define Device/linksys_ea6350v3
 	UBINIZE_OPTS := -E 5
 	IMAGES += factory.bin
 	IMAGE/factory.bin := append-kernel | append-uImage-fakehdr filesystem | pad-to $$$$(KERNEL_SIZE) | append-ubi | linksys-image type=EA6350v3
-	DEVICE_PACKAGES := uboot-envtools
+	DEVICE_PACKAGES := uboot-envtools ipq-wifi-linksys_ea6350v3
 endef
 TARGET_DEVICES += linksys_ea6350v3
 
