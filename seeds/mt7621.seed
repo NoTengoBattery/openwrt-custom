@@ -1,0 +1,22 @@
+# Customization of build config for MT7621
+
+CONFIG_TARGET_OPTIMIZATION="-O3 -pipe -march=1004kc -mtune=1004kc"
+CONFIG_TARGET_ramips_mt7621=y
+CONFIG_TARGET_ramips=y
+
+CONFIG_TARGET_DEVICE_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-16m=y
+CONFIG_TARGET_DEVICE_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-32m=y
+
+CONFIG_VERSION_MANUFACTURER="MediaTek"
+CONFIG_VERSION_MANUFACTURER_URL="https://www.mediatek.com"
+CONFIG_VERSION_PRODUCT="MT7621"
+
+# Packages for this particular target
+CONFIG_MODEMMANAGER_WITH_AT_COMMAND_VIA_DBUS=y
+
+CONFIG_PACKAGE_luci-app-mwan3=m
+CONFIG_PACKAGE_luci-proto-3g=m
+CONFIG_PACKAGE_luci-proto-modemmanager=m
+CONFIG_PACKAGE_luci-proto-qmi=m
+CONFIG_TARGET_DEVICE_PACKAGES_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-32m="luci-app-mwan3 luci-proto-3g luci-proto-modemmanager luci-proto-qmi"
+CONFIG_TARGET_DEVICE_PACKAGES_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-16m="luci-app-mwan3 luci-proto-3g luci-proto-modemmanager luci-proto-qmi"

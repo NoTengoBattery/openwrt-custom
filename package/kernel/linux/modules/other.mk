@@ -911,28 +911,106 @@ endef
 $(eval $(call KernelPackage,ikconfig))
 
 
-define KernelPackage/zram
+define KernelPackage/io-schedulers
+	SUBMENU:=$(OTHER_MENU)
+	TITLE:=Extra I/O Schedulers
+	KCONFIG:=CONFIG_MQ_IOSCHED_DEADLINE \
+		CONFIG_MQ_IOSCHED_KYBER \
+		CONFIG_IOSCHED_BFQ
+	FILES:= \
+		$(LINUX_DIR)/block/mq-deadline.ko \
+		$(LINUX_DIR)/block/kyber-iosched.ko \
+		$(LINUX_DIR)/block/bfq.ko
+	AUTOLOAD:=$(call AutoLoad,15,cfq-iosched mq-deadline kyber-iosched bfq,1)
+endef
+
+define KernelPackage/io-schedulers/description
+	An extra set of I/O schedulers for multiqueue and single-queue devices.
+
+	This package enables:
+		MQ-DEADLINE, MQ-KYBER and MQ-BFQ
+endef
+
+$(eval $(call KernelPackage,io-schedulers))
+
+
+define KernelPackage/zram-writeback
   SUBMENU:=$(OTHER_MENU)
-  TITLE:=ZRAM
-  DEPENDS:=+kmod-lib-lzo
+  TITLE:=ZRAM with writeback support
+  DEPENDS:=+kmod-zsmalloc
   KCONFIG:= \
-	CONFIG_ZSMALLOC \
 	CONFIG_ZRAM \
 	CONFIG_ZRAM_DEBUG=n \
-	CONFIG_PGTABLE_MAPPING=n \
-	CONFIG_ZRAM_WRITEBACK=n \
-	CONFIG_ZSMALLOC_STAT=n
+	CONFIG_ZRAM_MEMORY_TRACKING=n \
+	CONFIG_ZRAM_WRITEBACK=y
   FILES:= \
-	$(LINUX_DIR)/mm/zsmalloc.ko \
 	$(LINUX_DIR)/drivers/block/zram/zram.ko
-  AUTOLOAD:=$(call AutoLoad,20,zsmalloc zram)
+  AUTOLOAD:=$(call AutoLoad,20,zram)
 endef
 
-define KernelPackage/zram/description
- Compressed RAM block device support
+define KernelPackage/zram-writeback/description
+ Compressed RAM block device with support for page writeback
 endef
 
-$(eval $(call KernelPackage,zram))
+$(eval $(call KernelPackage,zram-writeback))
+
+
+define KernelPackage/zsmalloc
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=ZSMALLOC support
+  DEPENDS:=+kmod-crypto-deflate \
+	+kmod-lib-lz4 \
+	@!PACKAGE_kmod-zram
+  KCONFIG:= \
+	CONFIG_ZSMALLOC \
+	CONFIG_ZSMALLOC_STAT=n
+  FILES:= $(LINUX_DIR)/mm/zsmalloc.ko
+  AUTOLOAD:=$(call AutoLoad,19,zsmalloc)
+endef
+
+define KernelPackage/zsmalloc/description
+ Special purpose memory allocator for compressed memory pages
+endef
+
+define KernelPackage/zsmalloc/config
+	if PACKAGE_kmod-zsmalloc
+		config KERNEL_PGTABLE_MAPPING
+			bool "zsmalloc: enable CONFIG_PGTABLE_MAPPING"
+			default y if arm
+			default n
+			help
+	  Enable CONFIG_PGTABLE_MAPPING in the kernel for faster memory
+	  allocations when using ZSMALLOC, in some architectures. Enabled
+	  by default for the ARM architecture because it may be a huge
+	  performance boost.
+	endif
+endef
+
+$(eval $(call KernelPackage,zsmalloc))
+
+
+define KernelPackage/zswap
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=ZSWAP compressed swapping cache
+  DEPENDS:=+kmod-zsmalloc
+  KCONFIG:= \
+	CONFIG_FRONTSWAP=y \
+	CONFIG_Z3FOLD \
+	CONFIG_ZBUD \
+	CONFIG_ZPOOL \
+	CONFIG_ZSWAP=y
+  FILES:= \
+	$(LINUX_DIR)/mm/z3fold.ko \
+	$(LINUX_DIR)/mm/zbud.ko \
+	$(LINUX_DIR)/mm/zpool.ko
+  AUTOLOAD:=$(call AutoLoad,20,z3fold zbud zpool)
+endef
+
+define KernelPackage/zswap/description
+ Compressed swap LRU cache support
+endef
+
+$(eval $(call KernelPackage,zswap))
 
 
 define KernelPackage/pps
