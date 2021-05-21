@@ -1,0 +1,95 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use File::Spec::Functions qw(catfile catdir curdir);
+use Capture::Tiny qw(capture_stdout);
+
+my ($nargs) = $#ARGV + 1;
+if ( glob($nargs) != 1 ) {
+    print("Usage: $0 target\n\n");
+    print(
+"This program will build the optimized version of OpenWrt for the selected [target].\n"
+    );
+    exit 1;
+}
+
+use constant {
+    VERSION           => '3.0.0-rc1',
+    TARGET            => $ARGV[0],
+    DIST              => 'NoTengoBattery',
+    ROOT_URL          => 'notengobattery.com',
+    DOWNLOAD_ROOT_URL => 'downloads.notengobattery.com',
+    PROJECTS          => 'projects',
+    PROJECT_NAME      => "openwrt-" . $ARGV[0],
+    ISSUES            => 'issues',
+    NOTES             => 'notes',
+    LINUX_TARGET      => 'target/linux'
+};
+
+my ($releaseURL) =
+  'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, VERSION );
+my ($issuesURL) =
+  'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, VERSION, ISSUES );
+my ($downloadURL) =
+  'https://' . catdir( DOWNLOAD_ROOT_URL, PROJECTS, PROJECT_NAME, VERSION );
+my ($supportURL) =
+  'https://' . catdir( DOWNLOAD_ROOT_URL, PROJECTS, PROJECT_NAME, NOTES );
+my ($curDir)            = curdir();
+my ($dSeed)             = catdir( glob($curDir), 'seeds' );
+my ($dScripts)          = catdir( glob($curDir), 'scripts' );
+my ($linuxTarget)       = catdir( glob($curDir), LINUX_TARGET );
+my ($fConfig)           = catfile( glob($curDir),   '.config' );
+my ($fConfigSeed)       = catfile( glob($curDir),   'config.seed' );
+my ($fCommonSeed)       = catfile( glob($dSeed),    'common.seed' );
+my ($fKernelSeed)       = catfile( glob($dSeed),    'kernel.seed' );
+my ($fPackagesSeed)     = catfile( glob($dSeed),    'packages.seed' );
+my ($fTargetSeed)       = catfile( glob($dSeed),    TARGET . '.seed' );
+my ($fKernelCommonSeed) = catfile( glob($dSeed),    'common-kernel.seed' );
+my ($fKernelTargetSeed) = catfile( glob($dSeed),    TARGET . '-kernel.seed' );
+my ($fScriptDiff)       = catfile( glob($dScripts), 'diffconfig.sh' );
+my ($kconfg) = readpipe( sprintf "find %s -type f -path '*/%s/*config-*.*'",
+    $linuxTarget, TARGET );
+
+open( COMMON_SEED, "<", glob($fCommonSeed) )
+  or die qq(Could not open file '$fCommonSeed' : $!);
+open( KERNEL_SEED, "<", glob($fKernelSeed) )
+  or die qq(Could not open file '$fKernelSeed' : $!);
+open( TARGET_SEED, "<", glob($fTargetSeed) )
+  or die qq(Could not open file '$fTargetSeed' : $!);
+open( PACKAGE_SEED, "<", glob($fPackagesSeed) )
+  or die qq(Could not open file '$fPackagesSeed' : $!);
+open( KERNEL_COMMON_SEED, "<", glob($fKernelCommonSeed) )
+  or die qq(Could not open file '$fKernelCommonSeed' : $!);
+open( KERNEL_TARGET_SEED, "<", glob($fKernelTargetSeed) )
+  or die qq(Could not open file '$fKernelTargetSeed' : $!);
+open( CONFIG_SEED, ">", glob($fConfigSeed) )
+  or die qq(Could not open file '$fConfigSeed' : $!);
+open( CONFIG, ">", glob($fConfig) )
+  or die qq(Could not open file '$fConfig' : $!);
+open( KCONFIG, ">>", glob($kconfg) )
+  or die qq(Could not open file '$kconfg' : $!);
+
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_BUG_URL",  glob($issuesURL) );
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_DIST",     DIST );
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_HOME_URL", glob($releaseURL) );
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_NUMBER",   VERSION );
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_REPO",     glob($downloadURL) );
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_SUPPORT_URL", glob($supportURL) );
+print( CONFIG <COMMON_SEED>,  "\n" );
+print( CONFIG <KERNEL_SEED>,  "\n" );
+print( CONFIG <TARGET_SEED>,  "\n" );
+print( CONFIG <PACKAGE_SEED>, "\n" );
+close(CONFIG);
+
+print( KCONFIG <KERNEL_COMMON_SEED>, "\n" );
+print( KCONFIG <KERNEL_TARGET_SEED>, "\n" );
+close(KCONFIG);
+
+system("./scripts/feeds update -a");
+system("./scripts/feeds install -a");
+system("make defconfig");
+system("make kernel_oldconfig");
+print( CONFIG_SEED readpipe("$fScriptDiff") );
+
+print("\n\nProject configured. Now is a good moment to build.\n")
