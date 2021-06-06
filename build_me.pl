@@ -18,14 +18,14 @@ use constant {
     DIST              => 'NoTengoBattery',
     DOWNLOAD_ROOT_URL => 'downloads.notengobattery.com',
     ISSUES            => 'issues',
-    LINUX_TARGET      => 'target/linux'
+    LINUX_TARGET      => 'target/linux',
     PROJECTS          => 'projects',
     PROJECT_NAME      => "openwrt-" . $ARGV[0],
     RELEASES          => 'releases',
     RELEASE_NOTES     => 'release-notes',
     ROOT_URL          => 'notengobattery.com',
     TARGET            => $ARGV[0],
-    VERSION           => 'v3.0.0-rc1',
+    VERSION           => 'v3.0.0-rc1'
 };
 
 my ($releaseURL) =
