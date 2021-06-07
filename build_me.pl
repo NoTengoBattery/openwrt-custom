@@ -25,17 +25,20 @@ use constant {
     RELEASE_NOTES     => 'release-notes',
     ROOT_URL          => 'notengobattery.com',
     TARGET            => $ARGV[0],
-    VERSION           => 'v3.0.0-rc1'
+    VERSION           => 'v3.0.0-rc2'
 };
 
 my ($releaseURL) =
   'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, RELEASES, VERSION );
 my ($issuesURL) =
-  'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, RELEASES, VERSION, ISSUES );
+  'https://'
+  . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, RELEASES, VERSION, ISSUES );
 my ($downloadURL) =
   'https://' . catdir( DOWNLOAD_ROOT_URL, PROJECTS, 'openwrt-' . VERSION );
 my ($supportURL) =
-  'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, RELEASES, VERSION, RELEASE_NOTES );
+  'https://'
+  . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, RELEASES, VERSION,
+    RELEASE_NOTES );
 my ($curDir)            = curdir();
 my ($dSeed)             = catdir( glob($curDir), 'seeds' );
 my ($dScripts)          = catdir( glob($curDir), 'scripts' );
