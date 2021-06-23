@@ -25,7 +25,7 @@ use constant {
     RELEASE_NOTES     => 'release-notes',
     ROOT_URL          => 'notengobattery.com',
     TARGET            => $ARGV[0],
-    VERSION           => 'v3.0.0-rc2'
+    VERSION           => 'v3.0.0-rc3'
 };
 
 my ($releaseURL) =
