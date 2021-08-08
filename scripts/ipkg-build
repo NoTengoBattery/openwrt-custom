@@ -13,7 +13,7 @@ version=1.0
 FIND="$(command -v find)"
 FIND="${FIND:-$(command -v gfind)}"
 TAR="${TAR:-$(command -v tar)}"
-GZIP="$(command -v gzip)"
+GZIP="$(command -v pigz)"
 
 # try to use fixed source epoch
 if [ -n "$PKG_SOURCE_DATE_EPOCH" ]; then
