@@ -3,22 +3,9 @@
 CONFIG_TARGET_OPTIMIZATION="-O3 -pipe"
 CONFIG_TARGET_ipq40xx=y
 
-CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_avm_fritzbox-4040=y
-CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_ezviz_cs-w3-wd1200g-eup=y
-CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_glinet_gl-b1300=y
-CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_glinet_gl-s1300=y
-CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_linksys_ea6350v3=y
-CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_linksys_ea8300=y
-CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_linksys_mr8300=y
-CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_linksys_mr9000=y
-
 CONFIG_VERSION_MANUFACTURER="Qualcomm"
 CONFIG_VERSION_MANUFACTURER_URL="https://www.qualcomm.com/"
 CONFIG_VERSION_PRODUCT="IPQ40xx"
 
-# Packages for every specific devices
+# Packages to add in CONFIG_TARGET_DEVICE_PACKAGES
 CONFIG_PACKAGE_luci-app-advanced-reboot=m
-CONFIG_TARGET_DEVICE_PACKAGES_ipq40xx_generic_DEVICE_linksys_ea6350v3="luci-app-advanced-reboot"
-CONFIG_TARGET_DEVICE_PACKAGES_ipq40xx_generic_DEVICE_linksys_ea8300="luci-app-advanced-reboot"
-CONFIG_TARGET_DEVICE_PACKAGES_ipq40xx_generic_DEVICE_linksys_mr8300="luci-app-advanced-reboot"
-CONFIG_TARGET_DEVICE_PACKAGES_ipq40xx_generic_DEVICE_linksys_mr9000="luci-app-advanced-reboot"
