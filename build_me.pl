@@ -6,7 +6,7 @@ use File::Spec::Functions qw(catfile catdir curdir);
 use Capture::Tiny qw(capture_stdout);
 
 my ($nargs) = $#ARGV + 1;
-if ( glob($nargs) != 1 ) {
+if ( glob($nargs) >= 3 ) {
     print("Usage: $0 target\n\n");
     print(
 "This program will build the optimized version of OpenWrt for the selected [target].\n"
@@ -25,7 +25,8 @@ use constant {
     RELEASE_NOTES     => 'release-notes',
     ROOT_URL          => 'notengobattery.com',
     TARGET            => $ARGV[0],
-    VERSION           => 'v3.0.0-rc3'
+    SUBTARGET         => $ARGV[1] || 'generic',
+    VERSION           => 'v3.0.0-rc4'
 };
 
 my ($releaseURL) =
@@ -49,6 +50,7 @@ my ($fCommonSeed)       = catfile( glob($dSeed),    'common.seed' );
 my ($fKernelSeed)       = catfile( glob($dSeed),    'kernel.seed' );
 my ($fPackagesSeed)     = catfile( glob($dSeed),    'packages.seed' );
 my ($fTargetSeed)       = catfile( glob($dSeed),    TARGET . '.seed' );
+my ($fSubTargetSeed)    = catfile( glob($dSeed),    TARGET . '-' . SUBTARGET . '.seed' );
 my ($fKernelCommonSeed) = catfile( glob($dSeed),    'common-kernel.seed' );
 my ($fKernelTargetSeed) = catfile( glob($dSeed),    TARGET . '-kernel.seed' );
 my ($fScriptDiff)       = catfile( glob($dScripts), 'diffconfig.sh' );
@@ -61,6 +63,8 @@ open( KERNEL_SEED, "<", glob($fKernelSeed) )
   or die qq(Could not open file '$fKernelSeed' : $!);
 open( TARGET_SEED, "<", glob($fTargetSeed) )
   or die qq(Could not open file '$fTargetSeed' : $!);
+open( SUBTARGET_SEED, "<", glob($fSubTargetSeed) )
+  or die qq(Could not open file '$fSubTargetSeed' : $!);
 open( PACKAGE_SEED, "<", glob($fPackagesSeed) )
   or die qq(Could not open file '$fPackagesSeed' : $!);
 open( KERNEL_COMMON_SEED, "<", glob($fKernelCommonSeed) )
@@ -83,6 +87,7 @@ printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_SUPPORT_URL", glob($supportURL) );
 print( CONFIG <COMMON_SEED>,  "\n" );
 print( CONFIG <KERNEL_SEED>,  "\n" );
 print( CONFIG <TARGET_SEED>,  "\n" );
+print( CONFIG <SUBTARGET_SEED>,  "\n" );
 print( CONFIG <PACKAGE_SEED>, "\n" );
 close(CONFIG);
 

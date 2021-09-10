@@ -14,7 +14,17 @@ ipq40xx_setup_interfaces()
 {
 	local board=$1
 
+	export SUCCESS=1
 	case "$board" in
+	avm,fritzbox-4040|\
+	linksys,ea6350v3|\
+	linksys,ea8300|\
+	linksys,mr8300|\
+	linksys,mr9000)
+		ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
+		ucidef_add_switch "switch0" \
+			"0t@eth0" "1:lan" "2:lan" "3:lan" "4:lan" "5:wan"
+		;;
 	ezviz,cs-w3-wd1200g-eup)
 		ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
 		ucidef_add_switch "switch0" \
@@ -26,22 +36,17 @@ ipq40xx_setup_interfaces()
 		ucidef_add_switch "switch0" \
 			"0t@eth0" "3:lan" "4:lan" "5:wan"
 		;;
-	avm,fritzbox-4040|\
-	linksys,ea6350v3|\
-	linksys,ea8300|\
-	linksys,mr8300)
+	mikrotik,hap-ac2)
 		ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
 		ucidef_add_switch "switch0" \
-			"0t@eth0" "1:lan" "2:lan" "3:lan" "4:lan" "5:wan"
-		export SUCCESS=1
+			"0t@eth0" "1:lan:4" "2:lan:3" "3:lan:2" "4:lan:1" "5:wan"
 		;;
 	*)
 		echo 'network: unsupported hardware, interfaces not initialized' | tee /dev/kmsg
+		unset SUCCESS
 		;;
 	esac
-	if [ $SUCCESS -eq 1 ]; then
-		echo 'network: initialized ethernet/switch interfaces' | tee /dev/kmsg
-	fi
+	[ $SUCCESS -eq 1 ] && echo 'network: initialized ethernet/switch interfaces' | tee /dev/kmsg
 }
 
 ipq40xx_setup_macs()

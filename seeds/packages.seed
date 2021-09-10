@@ -37,3 +37,9 @@ CONFIG_PACKAGE_netcat=y
 CONFIG_PACKAGE_notengobattery-defaults=y
 CONFIG_PACKAGE_notengobattery-preboot=y
 CONFIG_PACKAGE_notengobattery-scripts=y
+
+# Extra modules to build (will build the core dependencies)
+CONFIG_PACKAGE_6rd=m
+CONFIG_PACKAGE_gerbera=m
+CONFIG_PACKAGE_luci-app-samba4=m
+CONFIG_PACKAGE_minidlna=m

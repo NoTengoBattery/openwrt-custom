@@ -1,0 +1,121 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+
+#include "qcom-ipq4019-xx8300.dtsi"
+
+/ {
+	model = "Linksys MR9000 (Dallas)";
+	compatible = "linksys,mr9000", "qcom,ipq4019";
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@87500000 {
+			compatible = "ramoops";
+			reg = <0x87500000 0x600000>;
+			console-size = <0x200000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
+	
+	aliases {
+		led-boot = &led_blue;
+		led-failsafe = &led_red;
+		led-running = &led_green;
+		led-upgrade = &led_blue;
+		serial0 = &blsp1_uart1;
+	};
+
+	// Top panel LEDs, above Linksys logo
+	leds {
+		compatible = "gpio-leds";
+		
+		led_blue: blue {
+			label = "blue:panel";
+			gpios = <&tlmm 46 GPIO_ACTIVE_LOW>;
+		};
+
+		led_red: red {
+			label = "red:panel";
+			gpios = <&tlmm 47 GPIO_ACTIVE_HIGH>;
+			panic-indicator;
+		};
+
+		led_green: green {
+			label = "green:panel";
+			gpios = <&tlmm 49 GPIO_ACTIVE_HIGH>;
+		};
+
+
+		// On back panel, above USB socket
+
+		led_usb: usb {
+			label = "green:usb";
+			gpios = <&tlmm 61 GPIO_ACTIVE_LOW>;
+			trigger-sources = <&usb3_port1>, <&usb3_port2>,
+					  <&usb2_port1>;
+			linux,default-trigger = "usbport";
+		};
+	};
+
+	keys {
+		compatible = "gpio-keys";
+
+		reset {
+			label = "reset";
+			linux,code = <KEY_RESTART>;
+			gpios = <&tlmm 50 GPIO_ACTIVE_LOW>;
+		};
+
+		wps {
+			label = "wps";
+			linux,code = <KEY_WPS_BUTTON>;
+			gpios = <&tlmm 18 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&mdio {
+	status = "okay";
+	pinctrl-0 = <&mdio_pins>;
+	pinctrl-names = "default";
+	reset-gpios = <&tlmm 54 GPIO_ACTIVE_LOW>;
+	reset-delay-us = <2000>;
+	reset-post-delay-us = <5000>;
+};
+	
+&tlmm {
+	status = "okay";
+	mdio_pins: mdio_pinmux {
+		mux_1 {
+			pins = "gpio6";
+			function = "mdio";
+			bias-pull-up;
+		};
+		mux_2 {
+			pins = "gpio7";
+			function = "mdc";
+			bias-pull-up;
+		};
+	};
+};
+
+&wifi0 {
+	status = "okay";
+	qcom,ath10k-calibration-variant = "linksys-mr9000-fcc";
+};
+
+&wifi1 {
+	status = "okay";
+	ieee80211-freq-limit = <5170000 5330000>;
+	qcom,ath10k-calibration-variant = "linksys-mr9000-fcc";
+};
+
+&wifi2 {
+	status = "okay";
+	ieee80211-freq-limit = <5490000 5835000>;
+	qcom,ath10k-calibration-variant = "linksys-mr9000-fcc";
+};
