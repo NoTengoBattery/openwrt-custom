@@ -3,11 +3,10 @@ use strict;
 use warnings;
 
 use File::Spec::Functions qw(catfile catdir curdir);
-use Capture::Tiny qw(capture_stdout);
 
 my ($nargs) = $#ARGV + 1;
 if ( glob($nargs) >= 3 ) {
-    print("Usage: $0 target\n\n");
+    print("Usage: $0 [target] [subtarget]\n\n");
     print(
 "This program will build the optimized version of OpenWrt for the selected [target].\n"
     );
@@ -51,7 +50,7 @@ my ($fFeaturesSeed)     = catfile( glob($dSeed),    'features.seed' );
 my ($fKernelCommonSeed) = catfile( glob($dSeed),    'common-kernel.seed' );
 my ($fKernelSeed)       = catfile( glob($dSeed),    'kernel.seed' );
 my ($fKernelTargetSeed) = catfile( glob($dSeed),    TARGET . '-kernel.seed' );
-my ($fPackagesSeed)     = catfile( glob($dSeed),    'packages.seed' );
+my ($fPackagesSeed)     = catfile( glob($dSeed),    ($ENV{PKGS} || 'packages') . '.seed' );
 my ($fSubTargetSeed)    = catfile( glob($dSeed),    TARGET . '-' . SUBTARGET . '.seed' );
 my ($fTargetSeed)       = catfile( glob($dSeed),    TARGET . '.seed' );
 my ($fScriptDiff)       = catfile( glob($dScripts), 'diffconfig.sh' );

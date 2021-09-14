@@ -179,13 +179,13 @@ for file_mode in $file_modes; do
 	chown "$uid:$gid" "$pkg_dir/$path"
 	chmod  "$mode" "$pkg_dir/$path"
 done
-$TAR -X $tmp_dir/tarX --format=gnu --sort=name -cpf - --mtime="$TIMESTAMP" . | $GZIP -9 -n - > $tmp_dir/data.tar.gz
+$TAR -X $tmp_dir/tarX --format=gnu --sort=name -cpf - --mtime="$TIMESTAMP" . | $GZIP -11 -n - > $tmp_dir/data.tar.gz
 
 installed_size=`stat -c "%s" $tmp_dir/data.tar.gz`
 sed -i -e "s/^Installed-Size: .*/Installed-Size: $installed_size/" \
 	$pkg_dir/$CONTROL/control
 
-( cd $pkg_dir/$CONTROL && $TAR --format=gnu --sort=name -cf -  --mtime="$TIMESTAMP" . | $GZIP -9 -n - > $tmp_dir/control.tar.gz )
+( cd $pkg_dir/$CONTROL && $TAR --format=gnu --sort=name -cf -  --mtime="$TIMESTAMP" . | $GZIP -11 -n - > $tmp_dir/control.tar.gz )
 rm $tmp_dir/tarX
 
 echo "2.0" > $tmp_dir/debian-binary
