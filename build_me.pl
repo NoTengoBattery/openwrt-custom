@@ -65,8 +65,7 @@ open( KERNEL_SEED, "<", glob($fKernelSeed) )
   or die qq(Could not open file '$fKernelSeed' : $!);
 open( TARGET_SEED, "<", glob($fTargetSeed) )
   or die qq(Could not open file '$fTargetSeed' : $!);
-open( SUBTARGET_SEED, "<", glob($fSubTargetSeed) )
-  or die qq(Could not open file '$fSubTargetSeed' : $!);
+open( SUBTARGET_SEED, "<", glob($fSubTargetSeed) );
 open( PACKAGE_SEED, "<", glob($fPackagesSeed) )
   or die qq(Could not open file '$fPackagesSeed' : $!);
 open( KERNEL_COMMON_SEED, "<", glob($fKernelCommonSeed) )
