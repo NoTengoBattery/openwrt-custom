@@ -25,7 +25,7 @@ use constant {
     ROOT_URL          => 'notengobattery.com',
     TARGET            => $ARGV[0],
     SUBTARGET         => $ARGV[1] || 'generic',
-    VERSION           => 'v3.0.0-rc4'
+    VERSION           => 'v3.0.0'
 };
 
 my ($releaseURL) =
