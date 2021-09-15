@@ -10,9 +10,3 @@ CONFIG_TARGET_DEVICE_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-32m=y
 CONFIG_VERSION_MANUFACTURER="MediaTek"
 CONFIG_VERSION_MANUFACTURER_URL="https://www.mediatek.com"
 CONFIG_VERSION_PRODUCT="MT7621"
-
-CONFIG_PACKAGE_luci-app-mwan3=m
-CONFIG_PACKAGE_luci-app-nlbwmon=m
-CONFIG_PACKAGE_luci-proto-qmi=m
-CONFIG_TARGET_DEVICE_PACKAGES_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-32m="luci-app-mwan3 luci-app-nlbwmon luci-proto-qmi"
-CONFIG_TARGET_DEVICE_PACKAGES_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-16m="luci-app-mwan3 luci-app-nlbwmon luci-proto-qmi"

@@ -90,7 +90,7 @@ $(curdir)/index: FORCE
 			$(call ERROR_MESSAGE,WARNING: Applying padding in $$d/Packages to workaround usign SHA-512 bug!); \
 			{ echo ""; echo ""; } >> Packages;; \
 		esac; \
-		gzip -9nc Packages > Packages.gz; \
+		pigz -11nc Packages > Packages.gz; \
 	); done
 ifdef CONFIG_SIGNED_PACKAGES
 	@echo Signing package index...
