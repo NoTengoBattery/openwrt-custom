@@ -6,12 +6,27 @@
 #include <dt-bindings/soc/qcom,tcsr.h>
 
 / {
-	model = "ASUS RT-AC58U";
+	model = "ASUS RT-AC58U (Retweet)";
 	compatible = "asus,rt-ac58u";
 
 	memory {
 		device_type = "memory";
 		reg = <0x80000000 0x8000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@87500000 {
+			compatible = "ramoops";
+			reg = <0x87500000 0x600000>;
+			console-size = <0x200000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
 	};
 
 	aliases {
@@ -120,6 +135,7 @@
 		led_power: status {
 			label = "blue:status";
 			gpios = <&tlmm 3 GPIO_ACTIVE_HIGH>;
+			panic-indicator;
 		};
 
 		wan {

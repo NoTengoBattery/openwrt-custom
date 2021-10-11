@@ -3,6 +3,7 @@
 CONFIG_TARGET_ipq40xx_generic=y
 
 # All supported devices
+CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_asus_rt-ac58u=y
 CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_avm_fritzbox-4040=y
 CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_ezviz_cs-w3-wd1200g-eup=y
 CONFIG_TARGET_DEVICE_ipq40xx_generic_DEVICE_glinet_gl-b1300=y
