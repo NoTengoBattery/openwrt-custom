@@ -14,12 +14,12 @@ alfa-network,ap120c-ac)
 	ucidef_set_led_netdev "wan" "WAN" "amber:wan" "eth1"
 	;;
 asus,rt-ac58u)
-	ucidef_set_led_netdev "wan" "WAN" "blue:wan" "eth1"
+	ucidef_set_led_netdev "wan" "WAN" "blue:wan" "eth0.2"
 	ucidef_set_led_switch "lan" "LAN" "blue:lan" "switch0" "0x1e"
 	;;
 avm,fritzbox-4040)
 	ucidef_set_led_wlan "wlan" "WLAN" "green:wlan" "phy0tpt" "phy1tpt"
-	ucidef_set_led_netdev "wan" "WAN" "green:wan" "eth1"
+	ucidef_set_led_netdev "wan" "WAN" "green:wan" "eth0.2"
 	ucidef_set_led_switch "lan" "LAN" "green:lan" "switch0" "0x1e"
 	;;
 avm,fritzbox-7530 |\
