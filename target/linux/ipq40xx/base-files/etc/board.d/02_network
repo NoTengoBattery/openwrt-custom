@@ -36,6 +36,7 @@ ipq40xx_setup_interfaces()
 		ucidef_add_switch "switch0" \
 			"0t@eth0" "3:lan" "4:lan" "5:wan"
 		;;
+	asus,rt-ac58u|\
 	mikrotik,hap-ac2)
 		ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
 		ucidef_add_switch "switch0" \
@@ -52,8 +53,17 @@ ipq40xx_setup_interfaces()
 ipq40xx_setup_macs()
 {
 	local board="$1"
+	local lan_mac=""
+	local wan_mac=""
+	local label_mac=""
 
 	case "$board" in
+	asus,rt-ac58u)
+		CI_UBIPART=UBI_DEV
+		wan_mac=$(mtd_get_mac_binary_ubi Factory 0x1006)
+		lan_mac=$(mtd_get_mac_binary_ubi Factory 0x5006)
+		label_mac=$wan_mac
+		;;
 	ezviz,cs-w3-wd1200g-eup)
 		label_mac=$(mtd_get_mac_binary "ART" 0x6)
 		;;
