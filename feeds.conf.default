@@ -1,5 +1,5 @@
-src-git packages https://git.openwrt.org/feed/packages.git^65057dcbb5de371503c9159de3d45824bec482e0
-src-git luci https://git.openwrt.org/project/luci.git^3b3c2e5f9f82372df8ff01ac65668be47690dcd5
-src-git routing https://git.openwrt.org/feed/routing.git^c30c9ffc93702365439a7647244a052531f2e957
-src-git telephony https://git.openwrt.org/feed/telephony.git^7f73a9ad19269dcddcb7fc26e03a9823717587bb
+src-git packages https://git.openwrt.org/feed/packages.git^ded142471e36831d2af63c7fe5062c4367f8ccd2
+src-git luci https://git.openwrt.org/project/luci.git^d24760e60a83b63f316c7b186e30636b5baa5481
+src-git routing https://git.openwrt.org/feed/routing.git^9e7698f20d1edf8f912fbce2f21400f3cc772b31
+src-git telephony https://git.openwrt.org/feed/telephony.git^ed2719867150a9bfc85bf41dff52ef8443820f2a
 src-git notengobattery_feed https://github.com/NoTengoBattery/openwrt-custom-feed.git;main
