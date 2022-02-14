@@ -25,7 +25,7 @@ use constant {
     ROOT_URL          => 'notengobattery.com',
     TARGET            => $ARGV[0],
     SUBTARGET         => $ARGV[1] || 'generic',
-    VERSION           => 'v3.0.0'
+    VERSION           => 'v3.0.1'
 };
 
 my ($releaseURL) =
@@ -99,8 +99,9 @@ close(KCONFIG);
 
 system("./scripts/feeds update -a");
 system("./scripts/feeds install -a");
-system("make defconfig");
-system("make kernel_oldconfig");
+system("make -j18 defconfig");
+system("make -j18 kernel_oldconfig");
+system("rm -rf ./bin");
 print( CONFIG_SEED readpipe("$fScriptDiff") );
 
 print("\n\nProject configured. Now is a good moment to build.\n")
