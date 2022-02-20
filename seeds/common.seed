@@ -29,6 +29,7 @@ CONFIG_SDK=y
 
 # Common packages to build/install
 
+CONFIG_PACKAGE_ip-full=y
 CONFIG_PACKAGE_notengobattery-preboot=y
 CONFIG_PACKAGE_notengobattery-scripts=y
 CONFIG_shadow-all=n

@@ -7,8 +7,23 @@
 #include <dt-bindings/soc/qcom,tcsr.h>
 
 / {
-	model = "ZyXEL NBG6617";
+	model = "ZyXEL NBG6617 (Zixane)";
 	compatible = "zyxel,nbg6617";
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@87500000 {
+			compatible = "ramoops";
+			reg = <0x87500000 0x600000>;
+			console-size = <0x200000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
 
 	chosen {
 		/*
@@ -144,6 +159,7 @@
 		power: power {
 			label = "green:power";
 			gpios = <&tlmm 3 GPIO_ACTIVE_HIGH>;
+			panic-indicator;
 		};
 
 		usb {

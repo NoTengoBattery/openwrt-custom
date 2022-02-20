@@ -3,8 +3,7 @@ set_preinit_iface() {
 
 	case $(board_name) in
 	aruba,ap-303 | \
-		meraki,mr33 | \
-		zyxel,nbg6617)
+		meraki,mr3)
 		ifname=eth0
 		;;
 	devolo,magic-2-wifi-next)
@@ -19,7 +18,8 @@ set_preinit_iface() {
 		linksys,ea8300 | \
 		linksys,mr8300 | \
 		linksys,mr9000 | \
-		mikrotik,hap-ac2)
+		mikrotik,hap-ac23 | \
+		zyxel,nbg6617)
 		ifname=eth1
 		;;
 	esac
