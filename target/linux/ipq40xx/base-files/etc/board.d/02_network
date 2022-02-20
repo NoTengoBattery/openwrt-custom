@@ -10,17 +10,16 @@
 . /lib/functions/uci-defaults.sh
 . /lib/functions/system.sh
 
-ipq40xx_setup_interfaces()
-{
+ipq40xx_setup_interfaces() {
 	local board=$1
 
 	export SUCCESS=1
 	case "$board" in
-	avm,fritzbox-4040|\
-	linksys,ea6350v3|\
-	linksys,ea8300|\
-	linksys,mr8300|\
-	linksys,mr9000)
+	avm,fritzbox-4040 | \
+		linksys,ea6350v3 | \
+		linksys,ea8300 | \
+		linksys,mr8300 | \
+		linksys,mr9000)
 		ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
 		ucidef_add_switch "switch0" \
 			"0t@eth0" "1:lan" "2:lan" "3:lan" "4:lan" "5:wan"
@@ -30,14 +29,15 @@ ipq40xx_setup_interfaces()
 		ucidef_add_switch "switch0" \
 			"0t@eth0" "2:lan:3" "3:lan:2" "4:lan:1" "5:wan"
 		;;
-	glinet,gl-b1300|\
-	glinet,gl-s1300)
+	glinet,gl-b1300 | \
+		glinet,gl-s1300)
 		ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
 		ucidef_add_switch "switch0" \
 			"0t@eth0" "3:lan" "4:lan" "5:wan"
 		;;
-	asus,rt-ac58u|\
-	mikrotik,hap-ac2)
+	asus,rt-ac58u | \
+		mikrotik,hap-ac2 | \
+		zyxel,nbg6617)
 		ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
 		ucidef_add_switch "switch0" \
 			"0t@eth0" "1:lan:4" "2:lan:3" "3:lan:2" "4:lan:1" "5:wan"
@@ -50,8 +50,7 @@ ipq40xx_setup_interfaces()
 	[ $SUCCESS -eq 1 ] && echo 'network: initialized ethernet/switch interfaces' | tee /dev/kmsg
 }
 
-ipq40xx_setup_macs()
-{
+ipq40xx_setup_macs() {
 	local board="$1"
 	local lan_mac=""
 	local wan_mac=""
