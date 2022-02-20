@@ -36,7 +36,8 @@ ipq40xx_setup_interfaces() {
 			"0t@eth0" "3:lan" "4:lan" "5:wan"
 		;;
 	asus,rt-ac58u | \
-		mikrotik,hap-ac2)
+		mikrotik,hap-ac2 | \
+		zyxel,nbg6617)
 		ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
 		ucidef_add_switch "switch0" \
 			"0t@eth0" "1:lan:4" "2:lan:3" "3:lan:2" "4:lan:1" "5:wan"
