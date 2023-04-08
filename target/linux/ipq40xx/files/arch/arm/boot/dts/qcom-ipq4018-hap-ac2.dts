@@ -10,6 +10,21 @@
 	model = "MikroTik hAP ac2";
 	compatible = "mikrotik,hap-ac2";
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@87500000 {
+			compatible = "ramoops";
+			reg = <0x87500000 0x600000>;
+			console-size = <0x200000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
+
 	memory {
 		device_type = "memory";
 		reg = <0x80000000 0x08000000>;

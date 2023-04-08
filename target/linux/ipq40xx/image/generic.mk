@@ -542,6 +542,7 @@ define Device/linksys_ea6350v3
 	UBINIZE_OPTS := -E 5
 	IMAGES += factory.bin
 	IMAGE/factory.bin := append-kernel | append-uImage-fakehdr filesystem | pad-to $$$$(KERNEL_SIZE) | append-ubi | linksys-image type=EA6350v3
+	DEVICE_PACKAGES := uboot-envtools ipq-wifi-linksys_ea6350v3
 endef
 TARGET_DEVICES += linksys_ea6350v3
 
@@ -576,6 +577,22 @@ define Device/linksys_mr8300
 	DEVICE_PACKAGES := ath10k-firmware-qca9888-ct ipq-wifi-linksys_mr8300-v0 kmod-usb-ledtrig-usbport
 endef
 TARGET_DEVICES += linksys_mr8300
+
+define Device/linksys_mr9000
+	$(call Device/FitzImage)
+	DEVICE_VENDOR := Linksys
+	DEVICE_MODEL := MR9000
+	SOC := qcom-ipq4019
+	KERNEL_SIZE := 3072k
+	IMAGE_SIZE := 87040k
+	BLOCKSIZE := 128k
+	PAGESIZE := 2048
+	UBINIZE_OPTS := -E 5    # EOD marks to "hide" factory sig at EOF
+	IMAGES += factory.bin
+	IMAGE/factory.bin  := append-kernel | pad-to $$$$(KERNEL_SIZE) | append-ubi | linksys-image type=MR9000
+	DEVICE_PACKAGES := ath10k-firmware-qca9984-ct ipq-wifi-linksys_mr9000 kmod-usb-ledtrig-usbport
+endef
+TARGET_DEVICES += linksys_mr9000
 
 define Device/luma_wrtq-329acn
 	$(call Device/FitImage)

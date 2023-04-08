@@ -9,6 +9,21 @@
 	model = "GL.iNet GL-S1300";
 	compatible = "glinet,gl-s1300";
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@87500000 {
+			compatible = "ramoops";
+			reg = <0x87500000 0x600000>;
+			console-size = <0x200000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
+
 	aliases {
 		led-boot = &led_power;
 		led-failsafe = &led_power;
@@ -110,6 +125,7 @@
 			label = "green:power";
 			gpios = <&tlmm 57 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
+			panic-indicator;
 		};
 
 		mesh {

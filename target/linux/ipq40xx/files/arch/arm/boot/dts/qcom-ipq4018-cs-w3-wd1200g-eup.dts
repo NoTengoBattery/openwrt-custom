@@ -9,6 +9,21 @@
 	model = "EZVIZ CS-W3-WD1200G EUP";
 	compatible = "ezviz,cs-w3-wd1200g-eup";
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@87500000 {
+			compatible = "ramoops";
+			reg = <0x87500000 0x600000>;
+			console-size = <0x200000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
+
 	aliases {
 		led-boot = &led_status_green;
 		led-failsafe = &led_status_red;
@@ -80,6 +95,7 @@
 		led_status_red: status_red {
 			label = "red:status";
 			gpios = <&tlmm 0 GPIO_ACTIVE_LOW>;
+			panic-indicator;
 		};
 
 		led_status_green: status_green {

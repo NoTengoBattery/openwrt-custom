@@ -9,6 +9,21 @@
 	model = "Linksys EA6350v3";
 	compatible = "linksys,ea6350v3";
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@87500000 {
+			compatible = "ramoops";
+			reg = <0x87500000 0x600000>;
+			console-size = <0x200000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
+
 	aliases {
 		led-boot = &power;
 		led-failsafe = &power;
@@ -100,6 +115,7 @@
 		power: status {
 			label = "green:status";
 			gpios = <&tlmm 2 GPIO_ACTIVE_HIGH>;
+			panic-indicator;
 		};
 	};
 };
@@ -254,6 +270,7 @@
 			sysdiag@5000000 {
 				label = "sysdiag";
 				reg = <0x05000000 0x00100000>;
+				read-only;
 			};
 			syscfg@5100000 {
 				label = "syscfg";
