@@ -1,0 +1,9 @@
+---
+version: '3.8'
+services:
+  openwrt:
+    build: .
+    command: [ "zsh", "--login" ]
+    volumes:
+      - .:/openwrt
+    user: "openwrt:openwrt"
