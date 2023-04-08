@@ -1,0 +1,12 @@
+# Customization of build config for MT7621
+
+CONFIG_TARGET_OPTIMIZATION="-Os -pipe -march=1004kc -mtune=1004kc"
+CONFIG_TARGET_ramips_mt7621=y
+CONFIG_TARGET_ramips=y
+
+CONFIG_TARGET_DEVICE_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-16m=y
+CONFIG_TARGET_DEVICE_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-32m=y
+
+CONFIG_VERSION_MANUFACTURER="MediaTek"
+CONFIG_VERSION_MANUFACTURER_URL="https://www.mediatek.com"
+CONFIG_VERSION_PRODUCT="MT7621"

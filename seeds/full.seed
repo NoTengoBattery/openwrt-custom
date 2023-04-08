@@ -1,0 +1,46 @@
+# Customization of build packages for all targets
+
+CONFIG_PACKAGE_kmod-fs-exfat=y
+CONFIG_PACKAGE_kmod-fs-ext4=y
+CONFIG_PACKAGE_kmod-fs-f2fs=y
+CONFIG_PACKAGE_kmod-fs-ntfs=y
+CONFIG_PACKAGE_kmod-fs-vfat=y
+
+CONFIG_PACKAGE_comgt-directip=y
+CONFIG_PACKAGE_comgt-ncm=y
+CONFIG_PACKAGE_comgt=y
+CONFIG_PACKAGE_iptables-mod-hashlimit=y
+CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y
+CONFIG_PACKAGE_kmod-usb-net-asix=y
+CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y
+CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y
+CONFIG_PACKAGE_kmod-usb-serial-option=y
+CONFIG_PACKAGE_kmod-usb-serial-wwan=y
+CONFIG_PACKAGE_kmod-usb-serial=y
+
+CONFIG_PACKAGE_kmod-usb-storage-extras=y
+CONFIG_PACKAGE_kmod-usb-storage-uas=y
+CONFIG_PACKAGE_kmod-usb-storage=y
+
+CONFIG_PACKAGE_luci-app-adblock=y
+CONFIG_PACKAGE_luci-app-commands=y
+CONFIG_PACKAGE_luci-app-compressed-memory=y
+CONFIG_PACKAGE_luci-app-sqm=y
+CONFIG_PACKAGE_luci-app-uhttpd=y
+CONFIG_PACKAGE_luci-mod-dashboard=y
+
+CONFIG_PACKAGE_iftop=y
+CONFIG_PACKAGE_nano-hl=y
+CONFIG_PACKAGE_netcat=y
+CONFIG_PACKAGE_notengobattery-defaults=y
+
+
+# Packages for every specific IPQ40xx devices
+CONFIG_TARGET_DEVICE_PACKAGES_ipq40xx_generic_DEVICE_linksys_ea6350v3="luci-app-advanced-reboot"
+CONFIG_TARGET_DEVICE_PACKAGES_ipq40xx_generic_DEVICE_linksys_ea8300="luci-app-advanced-reboot"
+CONFIG_TARGET_DEVICE_PACKAGES_ipq40xx_generic_DEVICE_linksys_mr8300="luci-app-advanced-reboot"
+CONFIG_TARGET_DEVICE_PACKAGES_ipq40xx_generic_DEVICE_linksys_mr9000="luci-app-advanced-reboot"
+
+# Packages for every specific MT7621 devices
+CONFIG_TARGET_DEVICE_PACKAGES_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-16m="luci-app-mwan3 luci-app-nlbwmon luci-proto-qmi"
+CONFIG_TARGET_DEVICE_PACKAGES_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-32m="luci-app-mwan3 luci-app-nlbwmon luci-proto-qmi"

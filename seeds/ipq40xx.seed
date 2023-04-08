@@ -1,0 +1,8 @@
+# Customization of build config for IPQ40xx
+
+CONFIG_TARGET_OPTIMIZATION="-Os -pipe"
+CONFIG_TARGET_ipq40xx=y
+
+CONFIG_VERSION_MANUFACTURER="Qualcomm"
+CONFIG_VERSION_MANUFACTURER_URL="https://www.qualcomm.com/"
+CONFIG_VERSION_PRODUCT="IPQ40xx"

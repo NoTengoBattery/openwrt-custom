@@ -1,0 +1,19 @@
+# Build this packages so they are available for installation
+
+CONFIG_AFALG_DIGESTS=y
+CONFIG_AFALG_FALLBACK=y
+CONFIG_AFALG_UPDATE_CTR_IV=y
+CONFIG_AFALG_ZERO_COPY=y
+CONFIG_OPENSSL_WITH_GOST=y
+
+CONFIG_PACKAGE_6rd=m
+CONFIG_PACKAGE_gerbera=m
+CONFIG_PACKAGE_libopenssl-afalg=m
+CONFIG_PACKAGE_libopenssl-afalg_sync=m
+CONFIG_PACKAGE_libopenssl-devcrypto=m
+CONFIG_PACKAGE_luci-app-advanced-reboot=m
+CONFIG_PACKAGE_luci-app-mwan3=m
+CONFIG_PACKAGE_luci-app-nlbwmon=m
+CONFIG_PACKAGE_luci-app-samba4=m
+CONFIG_PACKAGE_luci-proto-qmi=m
+CONFIG_PACKAGE_minidlna=m
