@@ -76,7 +76,7 @@ SQUASHFS_BLOCKSIZE := $(CONFIG_TARGET_SQUASHFS_BLOCK_SIZE)k
 SQUASHFSOPT := -b $(SQUASHFS_BLOCKSIZE)
 SQUASHFSOPT += -p '/dev d 755 0 0' -p '/dev/console c 600 0 0 5 1'
 SQUASHFSCOMP := gzip
-LZMA_XZ_OPTIONS := -Xpreset 9 -Xe -Xlc 0 -Xlp 2 -Xpb 2
+LZMA_XZ_OPTIONS := -Xpreset 9 -Xe -Xlc 0 -Xlp 2 -Xpb 2 -Xdict-size 100%
 ifeq ($(CONFIG_SQUASHFS_XZ),y)
   ifneq ($(filter arm x86 powerpc sparc,$(LINUX_KARCH)),)
     BCJ_FILTER:=-Xbcj $(LINUX_KARCH)
@@ -147,7 +147,7 @@ endef
 ifdef CONFIG_TARGET_IMAGES_GZIP
   define Image/Gzip
 	rm -f $(1).gz
-	gzip -9n $(1)
+	pigz -9n $(1)
   endef
 endif
 
@@ -295,13 +295,13 @@ ifdef CONFIG_TARGET_ROOTFS_TARGZ
   define Image/Build/targz
 	$(TAR) -cp --numeric-owner --owner=0 --group=0 --mode=a-s --sort=name \
 		$(if $(SOURCE_DATE_EPOCH),--mtime="@$(SOURCE_DATE_EPOCH)") \
-		-C $(TARGET_DIR)/ . | gzip -9n > $(BIN_DIR)/$(IMG_PREFIX)$(if $(PROFILE_SANITIZED),-$(PROFILE_SANITIZED))-rootfs.tar.gz
+		-C $(TARGET_DIR)/ . | pigz -9n > $(BIN_DIR)/$(IMG_PREFIX)$(if $(PROFILE_SANITIZED),-$(PROFILE_SANITIZED))-rootfs.tar.gz
   endef
 endif
 
 ifdef CONFIG_TARGET_ROOTFS_CPIOGZ
   define Image/Build/cpiogz
-	( cd $(TARGET_DIR); find . | cpio -o -H newc -R root:root | gzip -9n >$(BIN_DIR)/$(IMG_ROOTFS).cpio.gz )
+	( cd $(TARGET_DIR); find . | cpio -o -H newc -R root:root | pigz -9n >$(BIN_DIR)/$(IMG_ROOTFS).cpio.gz )
   endef
 endif
 
@@ -586,7 +586,7 @@ define Device/Build/image
   .IGNORE: $(BIN_DIR)/$(call IMAGE_NAME,$(1),$(2))
 
   $(BIN_DIR)/$(call IMAGE_NAME,$(1),$(2)).gz: $(KDIR)/tmp/$(call IMAGE_NAME,$(1),$(2))
-	gzip -c -9n $$^ > $$@
+	pigz -c -9n $$^ > $$@
 
   $(BIN_DIR)/$(call IMAGE_NAME,$(1),$(2)): $(KDIR)/tmp/$(call IMAGE_NAME,$(1),$(2))
 	cp $$^ $$@
