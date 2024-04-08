@@ -157,10 +157,11 @@ define KernelPackage/lib-lz4
 	CONFIG_LZ4_DECOMPRESS
   FILES:= \
 	$(LINUX_DIR)/crypto/lz4.ko \
+	$(LINUX_DIR)/crypto/lz4hc.ko \
 	$(LINUX_DIR)/lib/lz4/lz4_compress.ko \
 	$(LINUX_DIR)/lib/lz4/lz4hc_compress.ko \
 	$(LINUX_DIR)/lib/lz4/lz4_decompress.ko
-  AUTOLOAD:=$(call AutoProbe,lz4 lz4_compress lz4hc_compress lz4_decompress)
+  AUTOLOAD:=$(call AutoProbe,lz4 lz4hc lz4_compress lz4hc_compress lz4_decompress)
 endef
 
 define KernelPackage/lib-lz4/description

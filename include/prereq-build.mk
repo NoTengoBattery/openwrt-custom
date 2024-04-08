@@ -158,6 +158,9 @@ $(eval $(call SetupHostCommand,stat,Cannot find a file stat utility, \
 $(eval $(call SetupHostCommand,gzip,Please install 'gzip', \
 	gzip --version </dev/null))
 
+$(eval $(call SetupHostCommand,pigz,Please install 'pigz', \
+	pigz --version </dev/null))
+
 $(eval $(call SetupHostCommand,unzip,Please install 'unzip', \
 	unzip 2>&1 | grep zipfile, \
 	unzip))

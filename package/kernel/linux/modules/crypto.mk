@@ -1041,3 +1041,17 @@ endef
 
 $(eval $(call KernelPackage,crypto-xts))
 
+define KernelPackage/crypto-zstd
+  TITLE:=ZSTD compression CryptoAPI module
+  DEPENDS:=+kmod-lib-zstd +kmod-crypto-acompress
+  KCONFIG:=CONFIG_CRYPTO_ZSTD
+  FILES:=$(LINUX_DIR)/crypto/zstd.ko
+  AUTOLOAD:=$(call AutoLoad,09,zstd)
+  $(call AddDepends/crypto)
+endef
+
+define KernelPackage/crypto-zstd/description
+  Zstandard is a fast lossless compression algorithm, targeting real-time
+endef
+
+$(eval $(call KernelPackage,crypto-zstd))

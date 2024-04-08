@@ -97,7 +97,7 @@ $(curdir)/index: FORCE
 		sed -n -e 's/^Package: \(.*\)$$/"\1":/p' -e 's/^Version: \(.*\)$$/"\1",/p' Packages | tr '\n' ' ' >> index.json; \
 		echo '}}' >> index.json; \
 		sed -i 's/, }}/}}/' index.json; \
-		gzip -9nc Packages > Packages.gz; \
+		pigz -9nc Packages > Packages.gz; \
 	); done
 ifdef CONFIG_SIGNED_PACKAGES
 	@echo Signing package index...

@@ -326,7 +326,7 @@ define Build/libdeflate-gzip
 endef
 
 define Build/gzip
-	$(STAGING_DIR_HOST)/bin/gzip -f -9n -c $@ $(1) > $@.new
+	pigz -f -9n -c $@ $(1) > $@.new
 	@mv $@.new $@
 endef
 
@@ -334,7 +334,7 @@ define Build/gzip-filename
 	@mkdir -p $@.tmp
 	@cp $@ $@.tmp/$(word 1,$(1))
 	$(if $(SOURCE_DATE_EPOCH),touch -hcd "@$(SOURCE_DATE_EPOCH)" $@.tmp/$(word 1,$(1)) $(word 2,$(1)))
-	$(STAGING_DIR_HOST)/bin/gzip -f -9 -N -c $@.tmp/$(word 1,$(1)) $(word 2,$(1)) > $@.new
+	pigz -f -9 -N -c $@.tmp/$(word 1,$(1)) $(word 2,$(1)) > $@.new
 	@mv $@.new $@
 	@rm -rf $@.tmp
 endef
