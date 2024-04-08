@@ -27,6 +27,7 @@ key-build*
 *#
 .emacs.desktop*
 TAGS*~
+config.seed
 git-src
 .project
 .cproject
