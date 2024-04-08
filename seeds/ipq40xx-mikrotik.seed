@@ -1,0 +1,6 @@
+# Customization of build config for IPQ40xx (Mikrotik)
+
+CONFIG_TARGET_ipq40xx_mikrotik=y
+
+# All supported devices
+CONFIG_TARGET_DEVICE_ipq40xx_mikrotik_DEVICE_mikrotik_hap-ac2=y

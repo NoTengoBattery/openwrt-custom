@@ -1,0 +1,13 @@
+# Customization of build config for Intel x86 (Machine Specific)
+
+CONFIG_TARGET_x86=y
+
+CONFIG_PACKAGE_acpid=y
+CONFIG_PACKAGE_intel-microcode=y
+CONFIG_PACKAGE_iucode-tool=y
+
+CONFIG_PACKAGE_kmod-drm-i915=y
+
+CONFIG_VERSION_MANUFACTURER_URL="https://www.intel.com/"
+CONFIG_VERSION_MANUFACTURER="Intel"
+CONFIG_VERSION_PRODUCT="Intel Alder Lake"

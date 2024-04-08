@@ -1,0 +1,5 @@
+# Customization of build config for x86_64 (Machine Specific)
+
+CONFIG_TARGET_MULTI_PROFILE=n
+CONFIG_TARGET_OPTIMIZATION="-O3 -pipe -march=alderlake -mtune=alderlake"
+CONFIG_TARGET_x86_64=y
