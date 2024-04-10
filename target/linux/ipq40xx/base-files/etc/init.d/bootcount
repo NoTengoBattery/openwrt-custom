@@ -11,8 +11,10 @@ boot() {
 	linksys,ea6350v3|\
 	linksys,ea8300|\
 	linksys,mr8300|\
+	linksys,mr9000|\
 	linksys,whw01|\
 	linksys,whw03v2)
+		fw_setenv boot_count 0
 		mtd resetbc s_env || true
 		;;
 	netgear,wac510)
