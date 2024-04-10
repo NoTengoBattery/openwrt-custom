@@ -1,3 +1,12 @@
+Package/i915-firmware = $(call Package/firmware-default,Intel i915 firmware)
+define Package/i915-firmware/install
+	$(INSTALL_DIR) $(1)/lib/firmware/i915
+	$(CP) \
+		$(PKG_BUILD_DIR)/i915/* \
+		$(1)/lib/firmware/i915
+endef
+$(eval $(call BuildPackage,i915-firmware))
+
 Package/ibt-firmware = $(call Package/firmware-default,Intel bluetooth firmware)
 define Package/ibt-firmware/install
 	$(INSTALL_DIR) $(1)/lib/firmware/intel

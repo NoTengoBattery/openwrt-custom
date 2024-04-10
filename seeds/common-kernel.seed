@@ -1,8 +1,5 @@
 # Customization of kernel config for all targets
 
-# Kernel settings
-CONFIG_FRAME_WARN=1024
-
 # PSTORE configurations
 CONFIG_PSTORE_842_COMPRESS=n
 CONFIG_PSTORE_COMPRESS=y

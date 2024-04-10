@@ -128,15 +128,15 @@ define KernelPackage/lib-zstd
   DEPENDS:=+kmod-crypto-acompress
   KCONFIG:= \
 	CONFIG_CRYPTO_ZSTD \
-	CONFIG_ZSTD_COMPRESS \
+	CONFIG_XXHASH \
 	CONFIG_ZSTD_DECOMPRESS \
-	CONFIG_XXHASH
+  CONFIG_ZSTD_COMPRESS
   FILES:= \
 	$(LINUX_DIR)/crypto/zstd.ko \
 	$(LINUX_DIR)/lib/xxhash.ko \
 	$(LINUX_DIR)/lib/zstd/zstd_compress.ko \
 	$(LINUX_DIR)/lib/zstd/zstd_decompress.ko
-  AUTOLOAD:=$(call AutoProbe,xxhash zstd zstd_compress zstd_decompress)
+  AUTOLOAD:=$(call AutoProbe,zstd xxhash zstd_compress zstd_decompress)
 endef
 
 define KernelPackage/lib-zstd/description
@@ -154,14 +154,15 @@ define KernelPackage/lib-lz4
 	CONFIG_CRYPTO_LZ4 \
 	CONFIG_CRYPTO_LZ4HC \
 	CONFIG_LZ4_COMPRESS \
-	CONFIG_LZ4_DECOMPRESS
+	CONFIG_LZ4_DECOMPRESS \
+  CONFIG_LZ4HC_COMPRESS
   FILES:= \
 	$(LINUX_DIR)/crypto/lz4.ko \
 	$(LINUX_DIR)/crypto/lz4hc.ko \
 	$(LINUX_DIR)/lib/lz4/lz4_compress.ko \
-	$(LINUX_DIR)/lib/lz4/lz4hc_compress.ko \
-	$(LINUX_DIR)/lib/lz4/lz4_decompress.ko
-  AUTOLOAD:=$(call AutoProbe,lz4 lz4hc lz4_compress lz4hc_compress lz4_decompress)
+	$(LINUX_DIR)/lib/lz4/lz4_decompress.ko \
+	$(LINUX_DIR)/lib/lz4/lz4hc_compress.ko
+  AUTOLOAD:=$(call AutoProbe,lz4 lz4hc lz4_compress lz4_decompress lz4hc_compress)
 endef
 
 define KernelPackage/lib-lz4/description

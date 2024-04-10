@@ -8,6 +8,12 @@ CONFIG_PACKAGE_iucode-tool=y
 
 CONFIG_PACKAGE_kmod-drm-i915=y
 
+CONFIG_PACKAGE_irqbalance=y
+CONFIG_PACKAGE_luci-app-samba4=y
+
+CONFIG_GRUB_TIMEOUT="1"
+CONFIG_GRUB_TITLE="NoTengoBattery OpenWrt"
+
 CONFIG_VERSION_MANUFACTURER_URL="https://www.intel.com/"
 CONFIG_VERSION_MANUFACTURER="Intel"
 CONFIG_VERSION_PRODUCT="Intel Alder Lake"
