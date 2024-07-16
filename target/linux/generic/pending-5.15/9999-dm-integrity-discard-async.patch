@@ -1,0 +1,31 @@
+Index: linux-5.15.150/drivers/md/dm-integrity.c
+===================================================================
+--- linux-5.15.150.orig/drivers/md/dm-integrity.c
++++ linux-5.15.150/drivers/md/dm-integrity.c
+@@ -34,7 +34,7 @@
+ #define DEFAULT_MAX_JOURNAL_SECTORS	(IS_ENABLED(CONFIG_64BIT) ? 131072 : 8192)
+ #define MIN_LOG2_INTERLEAVE_SECTORS	3
+ #define MAX_LOG2_INTERLEAVE_SECTORS	31
+-#define METADATA_WORKQUEUE_MAX_ACTIVE	16
++#define METADATA_WORKQUEUE_MAX_ACTIVE	(num_online_cpus() >= 8 ? 8 : num_online_cpus())
+ #define RECALC_SECTORS			(IS_ENABLED(CONFIG_64BIT) ? 32768 : 2048)
+ #define RECALC_WRITE_SUPER		16
+ #define BITMAP_BLOCK_SIZE		4096	/* don't change it */
+@@ -2097,7 +2097,7 @@ static void dm_integrity_map_continue(st
+ 	struct completion read_comp;
+ 	bool discard_retried = false;
+ 	bool need_sync_io = ic->internal_hash && dio->op == REQ_OP_READ;
+-	if (unlikely(dio->op == REQ_OP_DISCARD) && ic->mode != 'D')
++	if (unlikely(dio->op == REQ_OP_DISCARD) && ic->mode == 'J')
+ 		need_sync_io = true;
+ 
+ 	if (need_sync_io && from_map) {
+@@ -2264,7 +2264,7 @@ offload_to_thread:
+ 	bio->bi_end_io = integrity_end_io;
+ 	bio->bi_iter.bi_size = dio->range.n_sectors << SECTOR_SHIFT;
+ 
+-	if (unlikely(dio->op == REQ_OP_DISCARD) && likely(ic->mode != 'D')) {
++	if (unlikely(dio->op == REQ_OP_DISCARD) && likely(ic->mode == 'J')) {
+ 		integrity_metadata(&dio->work);
+ 		dm_integrity_flush_buffers(ic, false);
+ 

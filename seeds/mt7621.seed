@@ -1,7 +1,7 @@
 # Customization of build config for MT7621
 
 CONFIG_TARGET_MULTI_PROFILE=y
-CONFIG_TARGET_OPTIMIZATION="-O3 -pipe -march=1004kc -mtune=1004kc"
+CONFIG_TARGET_OPTIMIZATION="-O3 -pipe -mno-branch-likely -mips32r2 -march=1004kc -mtune=1004kc"
 CONFIG_TARGET_ramips_mt7621=y
 CONFIG_TARGET_ramips=y
 

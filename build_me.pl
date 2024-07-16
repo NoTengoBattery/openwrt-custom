@@ -28,9 +28,10 @@ use constant {
     VERSION           => $ENV{VER} || 'v4.0.0'
 };
 
-my ($kconfgPathPattern) = SUBTARGET
-    ? sprintf "*/%s/%s/*config-*.*", TARGET, SUBTARGET
-    : sprintf "*/%s/*config-*.*", TARGET;
+my ($kconfgPathPatternSub) =
+  sprintf '*/%s/%s/*config-*.*', TARGET, SUBTARGET;
+my ($kconfgPathPatternMain) =
+  sprintf '*/%s/*config-*.*', TARGET;
 my ($releaseURL) =
   'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, RELEASES, VERSION );
 my ($issuesURL) =
@@ -57,29 +58,35 @@ my ($fPackagesSeed)     = catfile( glob($dSeed),    ($ENV{PKGS} || 'packages') .
 my ($fSubTargetSeed)    = catfile( glob($dSeed),    TARGET . '-' . SUBTARGET . '.seed' );
 my ($fTargetSeed)       = catfile( glob($dSeed),    TARGET . '.seed' );
 my ($fScriptDiff)       = catfile( glob($dScripts), 'diffconfig.sh' );
-my ($kconfg)            = readpipe( sprintf "find %s -type f -path '%s'", $linuxTarget, $kconfgPathPattern );
+
+my ($kconfg) =
+  readpipe( sprintf "find %s -type f -path '%s' | head -n 1", $linuxTarget, $kconfgPathPatternSub );
+if (!$kconfg) {
+  ($kconfg) =
+    readpipe( sprintf "find %s -type f -path '%s' | head -n 1", $linuxTarget, $kconfgPathPatternMain );
+}
 
 open( COMMON_SEED, "<", glob($fCommonSeed) )
-  or die qq(Could not open file '$fCommonSeed' : $!);
+  or die qq(Could not open file '$fCommonSeed' (COMMON_SEED): $!);
 open( FEATURES_SEED, "<", glob($fFeaturesSeed) )
-  or die qq(Could not open file '$fFeaturesSeed' : $!);
+  or die qq(Could not open file '$fFeaturesSeed' (FEATURES_SEED): $!);
 open( KERNEL_SEED, "<", glob($fKernelSeed) )
-  or die qq(Could not open file '$fKernelSeed' : $!);
+  or die qq(Could not open file '$fKernelSeed' (KERNEL_SEED): $!);
 open( TARGET_SEED, "<", glob($fTargetSeed) )
-  or die qq(Could not open file '$fTargetSeed' : $!);
+  or die qq(Could not open file '$fTargetSeed' (TARGET_SEED): $!);
 open( SUBTARGET_SEED, "<", glob($fSubTargetSeed) );
 open( PACKAGE_SEED, "<", glob($fPackagesSeed) )
-  or die qq(Could not open file '$fPackagesSeed' : $!);
+  or die qq(Could not open file '$fPackagesSeed' (PACKAGE_SEED): $!);
 open( KERNEL_COMMON_SEED, "<", glob($fKernelCommonSeed) )
-  or die qq(Could not open file '$fKernelCommonSeed' : $!);
+  or die qq(Could not open file '$fKernelCommonSeed' (KERNEL_COMMON_SEED): $!);
 open( KERNEL_TARGET_SEED, "<", glob($fKernelTargetSeed) )
-  or die qq(Could not open file '$fKernelTargetSeed' : $!);
+  or die qq(Could not open file '$fKernelTargetSeed' (KERNEL_TARGET_SEED): $!);
 open( CONFIG_SEED, ">", glob($fConfigSeed) )
-  or die qq(Could not open file '$fConfigSeed' : $!);
+  or die qq(Could not open file '$fConfigSeed' (CONFIG_SEED): $!);
 open( CONFIG, ">", glob($fConfig) )
-  or die qq(Could not open file '$fConfig' : $!);
+  or die qq(Could not open file '$fConfig' (CONFIG): $!);
 open( KCONFIG, ">>", glob($kconfg) )
-  or die qq(Could not open file '$kconfg' : $!);
+  or die qq(Could not open file '$kconfg' (KCONFIG): $!);
 
 printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_BUG_URL",     glob($issuesURL) );
 printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_DIST",        DIST );
@@ -101,8 +108,8 @@ close(KCONFIG);
 
 system("./scripts/feeds update -a");
 system("./scripts/feeds install -a");
-system("make -j32 defconfig");
-system("make -j32 kernel_oldconfig");
+system("make -j4 defconfig");
+system("make -j4 kernel_oldconfig");
 system("rm -rf ./bin");
 print( CONFIG_SEED readpipe("$fScriptDiff") );
 

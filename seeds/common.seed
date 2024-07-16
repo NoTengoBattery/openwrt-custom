@@ -22,10 +22,8 @@ CONFIG_INCLUDE_CONFIG=y
 CONFIG_IPK_FILES_CHECKSUMS=y
 CONFIG_JSON_OVERVIEW_IMAGE_INFO=y
 CONFIG_REPRODUCIBLE_DEBUG_INFO=y
-CONFIG_SDK=y
 
 # Common packages to build/install
 CONFIG_PACKAGE_ip-full=y
 CONFIG_PACKAGE_notengobattery-preboot=y
 CONFIG_PACKAGE_notengobattery-scripts=y
-CONFIG_shadow-all=n

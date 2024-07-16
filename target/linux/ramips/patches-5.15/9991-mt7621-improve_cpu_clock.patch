@@ -6,32 +6,52 @@ This patch sets the CPU frequency to the maximum allowed by the PLL.
 
 Signed-off-by: Oever González <software@notengobattery.com>
 ---
---- a/arch/mips/ralink/mt7621.c
-+++ b/arch/mips/ralink/mt7621.c
-@@ -171,6 +171,7 @@ void __init ralink_clk_init(void)
- 	u32 syscfg, xtal_sel, clkcfg, clk_sel, curclk, ffiv, ffrac;
- 	u32 pll, prediv, fbdiv;
- 	u32 xtal_clk, cpu_clk, bus_clk;
-+	u32 target_fbdiv, target_pll;
- 	const static u32 prediv_tbl[] = {0, 1, 2, 2};
+Index: linux-5.15.150/drivers/clk/ralink/clk-mt7621.c
+===================================================================
+--- linux-5.15.150.orig/drivers/clk/ralink/clk-mt7621.c
++++ linux-5.15.150/drivers/clk/ralink/clk-mt7621.c
+@@ -15,12 +15,13 @@
+ #include <dt-bindings/clock/mt7621-clk.h>
  
- 	syscfg = rt_sysc_r32(SYSC_REG_SYSTEM_CONFIG0);
-@@ -198,6 +199,18 @@ void __init ralink_clk_init(void)
- 		pll = rt_memc_r32(MEMC_REG_CPU_PLL);
- 		fbdiv = (pll >> CPU_PLL_FBDIV_SHIFT) & CPU_PLL_FBDIV_MASK;
- 		prediv = (pll >> CPU_PLL_PREDIV_SHIFT) & CPU_PLL_PREDIV_MASK;
-+		/* When using the PLL, this code will overclock the CPU */
+ /* Configuration registers */
+-#define SYSC_REG_SYSTEM_CONFIG0         0x10
+-#define SYSC_REG_SYSTEM_CONFIG1         0x14
++#define MEMC_REG_CPU_PLL		0x648
 +#define MT7621A_TARGET_CLOCK_HZ		1200000000
+ #define SYSC_REG_CLKCFG0		0x2c
+ #define SYSC_REG_CLKCFG1		0x30
+ #define SYSC_REG_CUR_CLK_STS		0x44
+-#define MEMC_REG_CPU_PLL		0x648
++#define SYSC_REG_SYSTEM_CONFIG0		0x10
++#define SYSC_REG_SYSTEM_CONFIG1		0x14
+ 
+ #define XTAL_MODE_SEL_MASK		GENMASK(8, 6)
+ #define CPU_CLK_SEL_MASK		GENMASK(31, 30)
+@@ -250,7 +251,7 @@ static unsigned long mt7621_cpu_recalc_r
+ 	struct regmap *sysc = clk->priv->sysc;
+ 	struct regmap *memc = clk->priv->memc;
+ 	u32 clkcfg, clk_sel, curclk, ffiv, ffrac;
+-	u32 pll, prediv, fbdiv;
++	u32 pll, prediv, fbdiv, target_pll, target_fbdiv;
+ 	unsigned long cpu_clk;
+ 
+ 	regmap_read(sysc, SYSC_REG_CLKCFG0, &clkcfg);
+@@ -268,6 +269,18 @@ static unsigned long mt7621_cpu_recalc_r
+ 		regmap_read(memc, MEMC_REG_CPU_PLL, &pll);
+ 		fbdiv = FIELD_GET(CPU_PLL_FBDIV_MASK, pll);
+ 		prediv = FIELD_GET(CPU_PLL_PREDIV_MASK, pll);
 +		target_fbdiv = (MT7621A_TARGET_CLOCK_HZ * ffiv) / ffrac;
 +		target_fbdiv = target_fbdiv << prediv_tbl[prediv];
 +		target_fbdiv = (target_fbdiv / xtal_clk) - 1;
-+		target_pll = pll & ~(CPU_PLL_FBDIV_MASK << CPU_PLL_FBDIV_SHIFT);
-+		target_pll = target_pll | (target_fbdiv << CPU_PLL_FBDIV_SHIFT);
-+		pr_info("CPU Overclock PLL: 0x%x\n", target_pll);
-+		rt_memc_w32(target_pll, MEMC_REG_CPU_PLL);
-+		pll = rt_memc_r32(MEMC_REG_CPU_PLL);
-+		fbdiv = (pll >> CPU_PLL_FBDIV_SHIFT) & CPU_PLL_FBDIV_MASK;
-+		prediv = (pll >> CPU_PLL_PREDIV_SHIFT) & CPU_PLL_PREDIV_MASK;
++		target_pll = pll & ~FIELD_PREP(CPU_PLL_FBDIV_MASK, fbdiv);
++		target_pll |= FIELD_PREP(CPU_PLL_FBDIV_MASK, target_fbdiv);
++		pr_info("CPU Overclock PLL: 0x%x\n", target_pll); panic("CPU Overclock PLL");
++		regmap_write(memc, MEMC_REG_CPU_PLL, target_pll);
++
++		regmap_read(memc, MEMC_REG_CPU_PLL, &pll);
++		fbdiv = FIELD_GET(CPU_PLL_FBDIV_MASK, pll);
++		prediv = FIELD_GET(CPU_PLL_PREDIV_MASK, pll);
++
  		cpu_clk = ((fbdiv + 1) * xtal_clk) >> prediv_tbl[prediv];
  		break;
  	default:

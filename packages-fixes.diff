@@ -1,0 +1,429 @@
+diff --git a/libs/libpfring/patches/1000-fix-compiler-error.patch b/libs/libpfring/patches/1000-fix-compiler-error.patch
+new file mode 100644
+index 000000000..f88e0ddf7
+--- /dev/null
++++ b/libs/libpfring/patches/1000-fix-compiler-error.patch
+@@ -0,0 +1,20 @@
++--- a/kernel/pf_ring.c
+++++ b/kernel/pf_ring.c
++@@ -5605,7 +5605,7 @@ static int packet_ring_bind(struct sock
++ static int ring_bind(struct socket *sock, struct sockaddr *sa, int addr_len)
++ {
++   struct sock *sk = sock->sk;
++-  char name[sizeof(sa->sa_data)+1];
+++  char name[sizeof(sa->sa_data_min)+1];
++ 
++   debug_printk(2, "ring_bind() called\n");
++ 
++@@ -5617,7 +5617,7 @@ static int ring_bind(struct socket *sock
++   if(sa->sa_family != PF_RING)
++     return(-EINVAL);
++ 
++-  memcpy(name, sa->sa_data, sizeof(sa->sa_data));
+++  memcpy(name, sa->sa_data, sizeof(sa->sa_data_min));
++ 
++   /* Add trailing zero if missing */
++   name[sizeof(name)-1] = '\0';
+\ No newline at end of file
+diff --git a/libs/libwebsockets/patches/001-fix-gcc-13-build-error.patch b/libs/libwebsockets/patches/001-fix-gcc-13-build-error.patch
+new file mode 100644
+index 000000000..211b7c3a6
+--- /dev/null
++++ b/libs/libwebsockets/patches/001-fix-gcc-13-build-error.patch
+@@ -0,0 +1,21 @@
++Index: libwebsockets-4.3.2/lib/tls/openssl/openssl-server.c
++===================================================================
++--- libwebsockets-4.3.2.orig/lib/tls/openssl/openssl-server.c
+++++ libwebsockets-4.3.2/lib/tls/openssl/openssl-server.c
++@@ -709,14 +709,14 @@ lws_tls_server_new_nonblocking(struct lw
++ 	return 0;
++ }
++ 
++-int
+++enum lws_ssl_capable_status
++ lws_tls_server_abort_connection(struct lws *wsi)
++ {
++ 	if (wsi->tls.use_ssl)
++ 		SSL_shutdown(wsi->tls.ssl);
++ 	SSL_free(wsi->tls.ssl);
++ 
++-	return 0;
+++	return LWS_SSL_CAPABLE_DONE;
++ }
++ 
++ enum lws_ssl_capable_status
+diff --git a/net/samba4/Makefile b/net/samba4/Makefile
+index 4afa87463..c0b57ed5c 100644
+--- a/net/samba4/Makefile
++++ b/net/samba4/Makefile
+@@ -2,7 +2,7 @@
+ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=samba
+-PKG_VERSION:=4.18.8
++PKG_VERSION:=4.14.14
+ PKG_RELEASE:=1
+ 
+ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+@@ -13,7 +13,7 @@ PKG_SOURCE_URL:= \
+ 		http://www.nic.funet.fi/index/samba/pub/samba/stable/ \
+ 		http://samba.mirror.bit.nl/samba/ftp/stable/ \
+ 		https://download.samba.org/pub/samba/stable/
+-PKG_HASH:=4fb87bceaeb01d832a59046c197a044b7e8e8000581548b5d577a6cda03344d1
++PKG_HASH:=abd5e9e6aa45e55114b188ba189ebdfc8fd3d7718d43f749e477ce7f791e5519
+ 
+ PKG_BUILD_FLAGS:=gc-sections
+ 
+diff --git a/net/samba4/patches/001-samba-4.4.0-pam.patch b/net/samba4/patches/001-samba-4.4.0-pam.patch
+new file mode 100644
+index 000000000..72de06619
+--- /dev/null
++++ b/net/samba4/patches/001-samba-4.4.0-pam.patch
+@@ -0,0 +1,29 @@
++--- a/source3/wscript
+++++ b/source3/wscript
++@@ -885,7 +885,7 @@ msg.msg_accrightslen = sizeof(fd);
++         if conf.env.with_iconv:
++             conf.DEFINE('HAVE_ICONV', 1)
++ 
++-    if Options.options.with_pam:
+++    if Options.options.with_pam != False:
++         use_pam=True
++         conf.CHECK_HEADERS('security/pam_appl.h pam/pam_appl.h')
++         if not conf.CONFIG_SET('HAVE_SECURITY_PAM_APPL_H') and not conf.CONFIG_SET('HAVE_PAM_PAM_APPL_H'):
++@@ -962,6 +962,17 @@ int i; i = PAM_RADIO_TYPE;
++                        "or headers not found. Use --without-pam to disable "
++                        "PAM support.");
++ 
+++    else:
+++        Logs.warn("PAM disabled")
+++        use_pam=False
+++        conf.undefine('WITH_PAM')
+++        conf.undefine('WITH_PAM_MODULES')
+++        conf.undefine('HAVE_SECURITY_PAM_APPL_H')
+++        conf.undefine('PAM_RHOST')
+++        conf.undefine('PAM_TTY')
+++        conf.undefine('HAVE_PAM_PAM_APPL_H')
+++
+++
++     seteuid = False
++ 
++ #
+diff --git a/net/samba4/patches/002-dnsserver-4.7.0.patch b/net/samba4/patches/002-dnsserver-4.7.0.patch
+new file mode 100644
+index 000000000..0c7592f8e
+--- /dev/null
++++ b/net/samba4/patches/002-dnsserver-4.7.0.patch
+@@ -0,0 +1,19 @@
++samba: build dnsserver_common code
++
++Just 'install' does not seem to do it.
++
++Upstream-Status: Pending
++
++Signed-off-by: Joe Slater <joe.slater@windriver.com>
++
++--- a/source4/dns_server/wscript_build
+++++ b/source4/dns_server/wscript_build
++@@ -4,7 +4,7 @@ bld.SAMBA_LIBRARY('dnsserver_common',
++         source='dnsserver_common.c',
++         deps='samba-util samba-errors ldbsamba clidns',
++         private_library=True,
++-        install=bld.AD_DC_BUILD_IS_ENABLED()
+++        enabled=bld.AD_DC_BUILD_IS_ENABLED()
++         )
++ 
++ bld.SAMBA_MODULE('service_dns',
+diff --git a/net/samba4/patches/006-netdb-defines.patch b/net/samba4/patches/006-netdb-defines.patch
+new file mode 100644
+index 000000000..a11f8d15c
+--- /dev/null
++++ b/net/samba4/patches/006-netdb-defines.patch
+@@ -0,0 +1,17 @@
++--- a/nsswitch/wins.c
+++++ b/nsswitch/wins.c
++@@ -40,6 +40,14 @@ static pthread_mutex_t wins_nss_mutex =
++ #define INADDRSZ 4
++ #endif
++ 
+++#ifndef NETDB_INTERNAL
+++#define NETDB_INTERNAL -1
+++#endif
+++
+++#ifndef NETDB_SUCCESS
+++#define NETDB_SUCCESS 0
+++#endif
+++
++ NSS_STATUS _nss_wins_gethostbyname_r(const char *hostname,
++ 				     struct hostent *he,
++ 				     char *buffer,
+diff --git a/net/samba4/patches/007-libldb-fix-musl-libc-unkown-type-error.patch b/net/samba4/patches/007-libldb-fix-musl-libc-unkown-type-error.patch
+index da564e050..29928976b 100644
+--- a/net/samba4/patches/007-libldb-fix-musl-libc-unkown-type-error.patch
++++ b/net/samba4/patches/007-libldb-fix-musl-libc-unkown-type-error.patch
+@@ -15,11 +15,12 @@ Signed-off-by: Changqing Li <changqing.li@windriver.com>
+ 
+ --- a/lib/tevent/tevent.h
+ +++ b/lib/tevent/tevent.h
+-@@ -33,6 +33,7 @@
++@@ -32,6 +32,8 @@
++ #include <talloc.h>
+  #include <sys/time.h>
+- #include <sys/types.h>
+  #include <stdbool.h>
+ +#include <sys/stat.h>
+++#include <sys/types.h>
+  
+  /* for old gcc releases that don't have the feature test macro __has_attribute */
+  #ifndef __has_attribute
+diff --git a/net/samba4/patches/009-samba-4-11-fix-host-tools-checks.patch.patch b/net/samba4/patches/009-samba-4-11-fix-host-tools-checks.patch.patch
+index 4f06db369..284c09d85 100644
+--- a/net/samba4/patches/009-samba-4-11-fix-host-tools-checks.patch.patch
++++ b/net/samba4/patches/009-samba-4-11-fix-host-tools-checks.patch.patch
+@@ -1,9 +1,9 @@
+ --- a/wscript_configure_embedded_heimdal
+ +++ b/wscript_configure_embedded_heimdal
+-@@ -6,3 +6,14 @@ if not conf.env['BISON']:
++@@ -2,3 +2,14 @@ if not conf.env['FLEX']:
++     conf.fatal("Embedded Heimdal build requires flex but it was not found.  Install flex or use --with-system-mitkrb5 or --with-system-heimdalkrb5")
+  
+- conf.define('USING_EMBEDDED_HEIMDAL', 1)
+- conf.RECURSE('third_party/heimdal_build')
++ conf.RECURSE('source4/heimdal_build')
+ +
+ +def check_system_heimdal_binary(name):
+ +    if conf.LIB_MAY_BE_BUNDLED(name):
+@@ -15,3 +15,28 @@
+ +
+ +check_system_heimdal_binary("compile_et")
+ +check_system_heimdal_binary("asn1_compile")
++--- a/wscript_configure_system_heimdal
+++++ b/wscript_configure_system_heimdal
++@@ -37,14 +37,6 @@ def check_system_heimdal_lib(name, funct
++     conf.define('USING_SYSTEM_%s' % name.upper(), 1)
++     return True
++ 
++-def check_system_heimdal_binary(name):
++-    if conf.LIB_MAY_BE_BUNDLED(name):
++-        return False
++-    if not conf.find_program(name, var=name.upper()):
++-        return False
++-    conf.define('USING_SYSTEM_%s' % name.upper(), 1)
++-    return True
++-
++ check_system_heimdal_lib("com_err", "com_right_r com_err", "com_err.h")
++ 
++ if check_system_heimdal_lib("roken", "rk_socket_set_reuseaddr", "roken.h"):
++@@ -96,7 +88,4 @@ finally:
++ #if conf.CHECK_BUNDLED_SYSTEM('tommath', checkfunctions='mp_init', headers='tommath.h'):
++ #    conf.define('USING_SYSTEM_TOMMATH', 1)
++ 
++-check_system_heimdal_binary("compile_et")
++-check_system_heimdal_binary("asn1_compile")
++-
++ conf.define('USING_SYSTEM_KRB5', 1)
+diff --git a/net/samba4/patches/010-samba-4-12-fix-musl_missing__nss_buflen_passwd.patch b/net/samba4/patches/010-samba-4-12-fix-musl_missing__nss_buflen_passwd.patch
+index b0d08f5c8..bbc66a057 100644
+--- a/net/samba4/patches/010-samba-4-12-fix-musl_missing__nss_buflen_passwd.patch
++++ b/net/samba4/patches/010-samba-4-12-fix-musl_missing__nss_buflen_passwd.patch
+@@ -1,13 +1,12 @@
+ --- a/lib/util/util_paths.c
+ +++ b/lib/util/util_paths.c
+-@@ -28,6 +28,10 @@
++@@ -26,6 +26,9 @@
++ #include "dynconfig/dynconfig.h"
++ #include "lib/util/util_paths.h"
+  #include "system/passwd.h"
+- #include "system/filesys.h"
+- 
+ +#if !defined(__GLIBC__) 
+ +	#define NSS_BUFLEN_PASSWD 1024
+ +#endif
+-+
++ 
+  /**
+   * @brief Returns an absolute path to a file in the Samba modules directory.
+-  *
+diff --git a/net/samba4/patches/011-samba-4-14-disable-python-module-host-check.patch b/net/samba4/patches/011-samba-4-14-disable-python-module-host-check.patch
+index d28f08b9d..ee84f779d 100644
+--- a/net/samba4/patches/011-samba-4-14-disable-python-module-host-check.patch
++++ b/net/samba4/patches/011-samba-4-14-disable-python-module-host-check.patch
+@@ -1,8 +1,8 @@
+ --- a/python/wscript
+ +++ b/python/wscript
+-@@ -90,9 +90,9 @@ def configure(conf):
+-                                       "'python3-iso8601'. Please install "
+-                                       "one of the packages.")
++@@ -73,9 +73,9 @@ def configure(conf):
++         for module, package in selftest_pkgs.items():
++             find_third_party_module(conf, module, package)
+  
+ -    if not Options.options.without_ad_dc:
+ -        for module, package in ad_dc_pkgs.items():
+diff --git a/net/samba4/patches/020-source3-msgsock-nvram-fix.patch b/net/samba4/patches/020-source3-msgsock-nvram-fix.patch
+index df5f56348..351f87bf7 100644
+--- a/net/samba4/patches/020-source3-msgsock-nvram-fix.patch
++++ b/net/samba4/patches/020-source3-msgsock-nvram-fix.patch
+@@ -1,6 +1,6 @@
+ --- a/source3/lib/messages.c
+ +++ b/source3/lib/messages.c
+-@@ -500,7 +500,7 @@ static NTSTATUS messaging_init_internal(
++@@ -507,7 +507,7 @@ static NTSTATUS messaging_init_internal(
+  		return NT_STATUS_ACCESS_DENIED;
+  	}
+  
+@@ -9,7 +9,7 @@
+  	if (priv_path == NULL) {
+  		return NT_STATUS_NO_MEMORY;
+  	}
+-@@ -663,7 +663,7 @@ NTSTATUS messaging_reinit(struct messagi
++@@ -670,7 +670,7 @@ NTSTATUS messaging_reinit(struct messagi
+  		msg_ctx->per_process_talloc_ctx,
+  		msg_ctx->event_ctx,
+  		&msg_ctx->id.unique_id,
+diff --git a/net/samba4/patches/021-source4-msgsock-nvram-fix.patch b/net/samba4/patches/021-source4-msgsock-nvram-fix.patch
+index 2bd1e79c6..d05e7bdcc 100644
+--- a/net/samba4/patches/021-source4-msgsock-nvram-fix.patch
++++ b/net/samba4/patches/021-source4-msgsock-nvram-fix.patch
+@@ -1,6 +1,6 @@
+ --- a/source4/lib/messaging/messaging.c
+ +++ b/source4/lib/messaging/messaging.c
+-@@ -526,7 +526,7 @@ static struct imessaging_context *imessa
++@@ -500,7 +500,7 @@ struct imessaging_context *imessaging_in
+  		goto fail;
+  	}
+  
+diff --git a/net/samba4/patches/102-samba-4.11-unbundle-libbsd.patch b/net/samba4/patches/102-samba-4.11-unbundle-libbsd.patch
+index 766fefc52..00c69bcc5 100644
+--- a/net/samba4/patches/102-samba-4.11-unbundle-libbsd.patch
++++ b/net/samba4/patches/102-samba-4.11-unbundle-libbsd.patch
+@@ -1,6 +1,6 @@
+ --- a/lib/replace/wscript
+ +++ b/lib/replace/wscript
+-@@ -434,22 +434,13 @@ def configure(conf):
++@@ -416,22 +416,13 @@ def configure(conf):
+  
+      conf.CHECK_FUNCS('prctl dirname basename')
+  
+@@ -29,7 +29,7 @@
+  
+      conf.CHECK_CODE('''
+                  struct ucred cred;
+-@@ -832,9 +823,6 @@ syscall(SYS_copy_file_range,0,NULL,0,NUL
++@@ -817,9 +808,6 @@ syscall(SYS_copy_file_range,0,NULL,0,NUL
+  
+      # look for a method of finding the list of network interfaces
+      for method in ['HAVE_IFACE_GETIFADDRS', 'HAVE_IFACE_AIX', 'HAVE_IFACE_IFCONF', 'HAVE_IFACE_IFREQ']:
+@@ -39,7 +39,7 @@
+          if conf.CHECK_CODE('''
+                             #define %s 1
+                             #define NO_CONFIG_H 1
+-@@ -847,7 +835,7 @@ syscall(SYS_copy_file_range,0,NULL,0,NUL
++@@ -832,7 +820,7 @@ syscall(SYS_copy_file_range,0,NULL,0,NUL
+                             #include "tests/getifaddrs.c"
+                             ''' % method,
+                             method,
+@@ -48,7 +48,7 @@
+                             addmain=False,
+                             execute=True):
+              break
+-@@ -895,7 +883,6 @@ def build(bld):
++@@ -880,7 +868,6 @@ def build(bld):
+                  break
+  
+      extra_libs = ''
+diff --git a/net/samba4/patches/103-samba-4.12-unbundle-libunwind.patch b/net/samba4/patches/103-samba-4.12-unbundle-libunwind.patch
+index e680e91ba..14a010c42 100644
+--- a/net/samba4/patches/103-samba-4.12-unbundle-libunwind.patch
++++ b/net/samba4/patches/103-samba-4.12-unbundle-libunwind.patch
+@@ -1,31 +1,23 @@
+ --- a/lib/util/wscript_configure
+ +++ b/lib/util/wscript_configure
+-@@ -12,17 +12,17 @@ conf.CHECK_FUNCS_IN('backtrace backtrace
++@@ -11,13 +11,13 @@ conf.CHECK_FUNCS_IN('backtrace backtrace
+  conf.CHECK_HEADERS('execinfo.h')
+  
+  conf.SET_TARGET_TYPE('LIBUNWIND', 'EMPTY')
+--if Options.options.with_libunwind:
+--    if conf.check_cfg(package='libunwind-generic',
+--                      args='--cflags --libs',
+--                      msg='Checking for libunwind',
+--                      uselib_store='LIBUNWIND',
+--                      mandatory=False):
+--        if conf.CHECK_HEADERS('libunwind.h'):
+--            conf.SET_TARGET_TYPE('LIBUNWIND', 'SYSLIB')
+--    else:
+--        raise Errors.WafError('--with-libunwind specified but libunwind not found')
+--elif Options.options.with_libunwind == None:
+-+#if Options.options.with_libunwind:
+-+    #if conf.check_cfg(package='libunwind-generic',
+-+                      #args='--cflags --libs',
+-+                      #msg='Checking for libunwind',
+-+                      #uselib_store='LIBUNWIND',
+-+                      #mandatory=False):
+-+        #if conf.CHECK_HEADERS('libunwind.h'):
+-+            #conf.SET_TARGET_TYPE('LIBUNWIND', 'SYSLIB')
+-+    #else:
+-+        #raise Errors.WafError('--with-libunwind specified but libunwind not found')
+-+if Options.options.with_libunwind == None:
+-     if not conf.CONFIG_SET('HAVE_BACKTRACE_SYMBOLS') \
+-        and not Options.options.disable_fault_handling:
+-         raise Errors.WafError(
++-if conf.check_cfg(package='libunwind-generic',
++-                  args='--cflags --libs',
++-                  msg='Checking for libunwind',
++-                  uselib_store='LIBUNWIND',
++-                  mandatory=False):
++-    if conf.CHECK_HEADERS('libunwind.h'):
++-        conf.SET_TARGET_TYPE('LIBUNWIND', 'SYSLIB')
+++# if conf.check_cfg(package='libunwind-generic',
+++                  # args='--cflags --libs',
+++                  # msg='Checking for libunwind',
+++                  # uselib_store='LIBUNWIND',
+++                  # mandatory=False):
+++    # if conf.CHECK_HEADERS('libunwind.h'):
+++        # conf.SET_TARGET_TYPE('LIBUNWIND', 'SYSLIB')
++ 
++ conf.CHECK_STRUCTURE_MEMBER('struct statvfs', 'f_frsize', define='HAVE_FRSIZE', headers='sys/statvfs.h')
++ 
+diff --git a/net/samba4/patches/105-perl-json-pp.patch b/net/samba4/patches/105-perl-json-pp.patch
+deleted file mode 100644
+index feb8aaaf4..000000000
+--- a/net/samba4/patches/105-perl-json-pp.patch
++++ /dev/null
+@@ -1,20 +0,0 @@
+---- a/third_party/heimdal/cf/make-proto.pl
+-+++ b/third_party/heimdal/cf/make-proto.pl
+-@@ -4,7 +4,7 @@
+- use Getopt::Std;
+- use File::Compare;
+- 
+--use JSON;
+-+use JSON::PP;
+- 
+- my $comment = 0;
+- my $doxygen = 0;
+-@@ -70,7 +70,7 @@ if($opt_x) {
+-     my $EXP;
+-     local $/;
+-     open(EXP, '<', $opt_x) || die "open ${opt_x}";
+--    my $obj = JSON->new->utf8->decode(<EXP>);
+-+    my $obj = JSON::PP->new->utf8->decode(<EXP>);
+-     close $EXP;
+- 
+-     foreach my $x (keys %$obj) {
+diff --git a/sound/fdk-aac/Makefile b/sound/fdk-aac/Makefile
+index 4d429ba0b..74f243be7 100644
+--- a/sound/fdk-aac/Makefile
++++ b/sound/fdk-aac/Makefile
+@@ -52,6 +52,10 @@ ifeq ($(CONFIG_FDK-AAC_OPTIMIZE_SPEED),y)
+ 	TARGET_LDFLAGS += -flto
+ endif
+ 
++ifeq ($(CONFIG_TARGET_ramips_mt7621),y)
++	TARGET_CXXFLAGS += -mno-mips16
++endif
++
+ define Build/InstallDev
+ 	$(INSTALL_DIR) $(1)/usr/include
+ 	$(CP) $(PKG_INSTALL_DIR)/usr/include/fdk-aac $(1)/usr/include

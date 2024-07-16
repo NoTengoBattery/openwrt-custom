@@ -2,14 +2,33 @@
 
 CONFIG_TARGET_x86=y
 
-CONFIG_PACKAGE_acpid=y
+CONFIG_BUSYBOX_CONFIG_ACPID=y
+CONFIG_BUSYBOX_CONFIG_FEATURE_ACPID_COMPAT=y
 CONFIG_PACKAGE_intel-microcode=y
 CONFIG_PACKAGE_iucode-tool=y
 
+CONFIG_PACKAGE_kmod-ata-ahci=y
 CONFIG_PACKAGE_kmod-drm-i915=y
+CONFIG_PACKAGE_kmod-fs-efivarfs=y
+CONFIG_PACKAGE_kmod-i2c-smbus=y
+CONFIG_PACKAGE_kmod-nvme=y
+CONFIG_PACKAGE_kmod-sound-core=y
+CONFIG_PACKAGE_kmod-sound-dummy=y
+CONFIG_PACKAGE_kmod-sound-hda-core=y
+CONFIG_PACKAGE_kmod-sound-hda-intel=y
+CONFIG_PACKAGE_kmod-usb-audio=y
 
+CONFIG_BUSYBOX_CONFIG_BEEP=y
+CONFIG_PACKAGE_btrfs-snapshots=y
+CONFIG_PACKAGE_efibootmgr=y
+CONFIG_PACKAGE_efivar=y
 CONFIG_PACKAGE_irqbalance=y
+CONFIG_PACKAGE_luci-app-minidlna=y
+CONFIG_PACKAGE_luci-app-openvpn=y
 CONFIG_PACKAGE_luci-app-samba4=y
+CONFIG_PACKAGE_nvme-cli=y
+CONFIG_PACKAGE_openvpn-openssl=y
+CONFIG_PACKAGE_powertop=y
 
 CONFIG_GRUB_TIMEOUT="1"
 CONFIG_GRUB_TITLE="NoTengoBattery OpenWrt"

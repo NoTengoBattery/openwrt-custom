@@ -210,25 +210,25 @@ define KernelPackage/dm
   KCONFIG:= \
 	CONFIG_BLK_DEV_MD=n \
 	CONFIG_DM_DEBUG=n \
-	CONFIG_DM_UEVENT=n \
 	CONFIG_DM_DELAY=n \
+	CONFIG_DM_LOG_USERSPACE=n \
 	CONFIG_DM_LOG_WRITES=n \
 	CONFIG_DM_MQ_DEFAULT=n \
 	CONFIG_DM_MULTIPATH=n \
-	CONFIG_DM_ZERO=n \
 	CONFIG_DM_SNAPSHOT=n \
-	CONFIG_DM_LOG_USERSPACE=n \
+	CONFIG_DM_UEVENT=n \
+	CONFIG_DM_ZERO=n \
 	CONFIG_MD=y \
 	CONFIG_BLK_DEV_DM \
 	CONFIG_DM_CRYPT \
 	CONFIG_DM_MIRROR
   FILES:= \
-    $(LINUX_DIR)/drivers/md/dm-mod.ko \
     $(LINUX_DIR)/drivers/md/dm-crypt.ko \
     $(LINUX_DIR)/drivers/md/dm-log.ko \
     $(LINUX_DIR)/drivers/md/dm-mirror.ko \
+    $(LINUX_DIR)/drivers/md/dm-mod.ko \
     $(LINUX_DIR)/drivers/md/dm-region-hash.ko
-  AUTOLOAD:=$(call AutoLoad,30,dm-mod dm-log dm-region-hash dm-mirror dm-crypt,1)
+  AUTOLOAD:=$(call AutoLoad,30,dm-mod dm-crypt dm-log dm-mirror dm-region-hash,1)
 endef
 
 define KernelPackage/dm/description
@@ -243,9 +243,15 @@ define KernelPackage/dm-raid
   DEPENDS:=+kmod-dm +kmod-md-mod \
            +kmod-md-raid0 +kmod-md-raid1 +kmod-md-raid10 +kmod-md-raid456
   KCONFIG:= \
+	CONFIG_DM_BUFIO \
+	CONFIG_DM_DEBUG_BLOCK_MANAGER_LOCKING = n \
+	CONFIG_DM_INTEGRITY \
 	CONFIG_DM_RAID
-  FILES:=$(LINUX_DIR)/drivers/md/dm-raid.ko
-  AUTOLOAD:=$(call AutoLoad,31,dm-raid)
+  FILES:= \
+    $(LINUX_DIR)/drivers/md/dm-bufio.ko \
+    $(LINUX_DIR)/drivers/md/dm-integrity.ko \
+    $(LINUX_DIR)/drivers/md/dm-raid.ko
+  AUTOLOAD:=$(call AutoLoad,31,dm-bufio dm-integrity dm-raid)
 endef
 
 define KernelPackage/dm-raid/description

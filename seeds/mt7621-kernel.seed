@@ -1,4 +1,8 @@
 # Customization of kernel config for IPQ40xx
 
-CONFIG_CMDLINE="rootfstype=squashfs,jffs2"
+CONFIG_CMDLINE=""
+
 CONFIG_DEFAULT_HOSTNAME="MT7621"
+
+# Block and FS
+CONFIG_SQUASHFS_4K_DEVBLK_SIZE=y
