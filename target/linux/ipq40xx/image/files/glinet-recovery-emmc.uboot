@@ -1,0 +1,179 @@
+# GL.iNet QSDK recovery image U-Boot script for IPQ40xx (eMMC)
+
+if test "x$verbose" = "x"; then
+    failedmsg='[failed]'
+else
+    failedmsg='######################################## Failed'
+fi
+if test "x$machid" = "x8010001"; then
+
+    sf probe || setenv stdout serial && echo "$failedmsg" && exit 1
+fi
+
+if test "x$verbose" = "x"; then
+    failedmsg='[failed]'
+else
+    failedmsg='######################################## Failed'
+fi
+if test "x$machid" = "x8010001"; then
+
+    if test "x$verbose" = "x"; then
+        echo \\c'Flashing gpt:                           '
+        setenv stdout nulldev
+    else
+        echo '######################################## Flashing gpt: Started'
+    fi
+    imxtract $imgaddr gpt || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc erase 0x0 0x22 || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc write $fileaddr 0x0 __GPT_BLKCNT__ || setenv stdout serial && echo "$failedmsg" && exit 1
+    if test "x$verbose" = "x"; then
+        setenv stdout serial
+        echo '[ done ]'
+        setenv stdout nulldev
+        setenv stdout serial
+    else
+        echo '######################################## Flashing gpt: Done'
+    fi
+    if test "x$verbose" = "x"; then
+        echo \\c'Flashing hlos:                          '
+        setenv stdout nulldev
+    else
+        echo '######################################## Flashing hlos: Started'
+    fi
+    imxtract $imgaddr hlos || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc erase 0x22 0x10000 || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc write $fileaddr 0x22 __HLOS_BLKCNT__ || setenv stdout serial && echo "$failedmsg" && exit 1
+    if test "x$verbose" = "x"; then
+        setenv stdout serial
+        echo '[ done ]'
+        setenv stdout nulldev
+        setenv stdout serial
+    else
+        echo '######################################## Flashing hlos: Done'
+    fi
+    if test "x$verbose" = "x"; then
+        echo \\c'Flashing rootfs:                        '
+        setenv stdout nulldev
+    else
+        echo '######################################## Flashing rootfs: Started'
+    fi
+    imxtract $imgaddr rootfs || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc erase 0x10022 0x40000 || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc write $fileaddr 0x10022 __ROOTFS_BLKCNT__ || setenv stdout serial && echo "$failedmsg" && exit 1
+    if test "x$verbose" = "x"; then
+        setenv stdout serial
+        echo '[ done ]'
+        setenv stdout nulldev
+        setenv stdout serial
+    else
+        echo '######################################## Flashing rootfs: Done'
+    fi
+    if test "x$verbose" = "x"; then
+        echo \\c'Flashing rootfs_data:                   '
+        setenv stdout nulldev
+    else
+        echo '######################################## Flashing rootfs_data: Started'
+    fi
+    mmc erase 0x50022 0x100000 || setenv stdout serial && echo "$failedmsg" && exit 1
+    imxtract $imgaddr rootfs_data || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc write $fileaddr 0x50022 __ROOTFS_DATA_BLKCNT__ || setenv stdout serial && echo "$failedmsg" && exit 1
+    if test "x$verbose" = "x"; then
+        setenv stdout serial
+        echo '[ done ]'
+        setenv stdout nulldev
+        setenv stdout serial
+    else
+        echo '######################################## Flashing rootfs_data: Done'
+    fi
+    exit 0
+
+fi
+
+if test "x$verbose" = "x"; then
+    failedmsg='[failed]'
+else
+    failedmsg='######################################## Failed'
+fi
+if test "x$machid" = "x8010201"; then
+
+    sf probe || setenv stdout serial && echo "$failedmsg" && exit 1
+fi
+
+if test "x$verbose" = "x"; then
+    failedmsg='[failed]'
+else
+    failedmsg='######################################## Failed'
+fi
+if test "x$machid" = "x8010201"; then
+
+    if test "x$verbose" = "x"; then
+        echo \\c'Flashing gpt:                           '
+        setenv stdout nulldev
+    else
+        echo '######################################## Flashing gpt: Started'
+    fi
+    imxtract $imgaddr gpt || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc erase 0x0 0x22 || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc write $fileaddr 0x0 __GPT_BLKCNT__ || setenv stdout serial && echo "$failedmsg" && exit 1
+    if test "x$verbose" = "x"; then
+        setenv stdout serial
+        echo '[ done ]'
+        setenv stdout nulldev
+        setenv stdout serial
+    else
+        echo '######################################## Flashing gpt: Done'
+    fi
+    if test "x$verbose" = "x"; then
+        echo \\c'Flashing hlos:                          '
+        setenv stdout nulldev
+    else
+        echo '######################################## Flashing hlos: Started'
+    fi
+    imxtract $imgaddr hlos || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc erase 0x22 0x10000 || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc write $fileaddr 0x22 __HLOS_BLKCNT__ || setenv stdout serial && echo "$failedmsg" && exit 1
+    if test "x$verbose" = "x"; then
+        setenv stdout serial
+        echo '[ done ]'
+        setenv stdout nulldev
+        setenv stdout serial
+    else
+        echo '######################################## Flashing hlos: Done'
+    fi
+    if test "x$verbose" = "x"; then
+        echo \\c'Flashing rootfs:                        '
+        setenv stdout nulldev
+    else
+        echo '######################################## Flashing rootfs: Started'
+    fi
+    imxtract $imgaddr rootfs || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc erase 0x10022 0x40000 || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc write $fileaddr 0x10022 __ROOTFS_BLKCNT__ || setenv stdout serial && echo "$failedmsg" && exit 1
+    if test "x$verbose" = "x"; then
+        setenv stdout serial
+        echo '[ done ]'
+        setenv stdout nulldev
+        setenv stdout serial
+    else
+        echo '######################################## Flashing rootfs: Done'
+    fi
+    if test "x$verbose" = "x"; then
+        echo \\c'Flashing rootfs_data:                   '
+        setenv stdout nulldev
+    else
+        echo '######################################## Flashing rootfs_data: Started'
+    fi
+    mmc erase 0x50022 0x100000 || setenv stdout serial && echo "$failedmsg" && exit 1
+    imxtract $imgaddr rootfs_data || setenv stdout serial && echo "$failedmsg" && exit 1
+    mmc write $fileaddr 0x50022 __ROOTFS_DATA_BLKCNT__ || setenv stdout serial && echo "$failedmsg" && exit 1
+    if test "x$verbose" = "x"; then
+        setenv stdout serial
+        echo '[ done ]'
+        setenv stdout nulldev
+        setenv stdout serial
+    else
+        echo '######################################## Flashing rootfs_data: Done'
+    fi
+    exit 0
+
+fi

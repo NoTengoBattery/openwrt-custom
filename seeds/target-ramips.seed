@@ -1,0 +1,8 @@
+# Customization of build config for RAMIPS
+
+CONFIG_TARGET_ramips=y
+CONFIG_TARGET_MULTI_PROFILE=y
+
+CONFIG_VERSION_MANUFACTURER_URL="https://www.mediatek.com"
+CONFIG_VERSION_MANUFACTURER="MediaTek"
+CONFIG_VERSION_PRODUCT="Ramips"

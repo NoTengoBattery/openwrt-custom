@@ -66,6 +66,10 @@ MAKE_FLAGS += \
 	LDFLAGS="$(TARGET_LDFLAGS)" \
 	all
 
+ifeq ($(CONFIG_TARGET_ramips_mt7621),y)
+	TARGET_LDFLAGS += -fPIC
+endif
+
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include
 	$(CP) $(PKG_BUILD_DIR)/bzlib.h $(1)/usr/include/

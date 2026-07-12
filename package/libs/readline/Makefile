@@ -62,6 +62,10 @@ TARGET_LDFLAGS += $(FPIC)
 HOST_CFLAGS += $(HOST_FPIC)
 HOST_LDFLAGS += $(HOST_FPIC)
 
+ifeq ($(CONFIG_TARGET_ramips_mt7621),y)
+	TARGET_LDFLAGS += -fPIC
+endif
+
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include
 	$(CP) $(PKG_INSTALL_DIR)/usr/include/readline $(1)/usr/include/

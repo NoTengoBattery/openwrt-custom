@@ -233,7 +233,8 @@ define KernelPackage/dm
 	CONFIG_MD=y \
 	CONFIG_BLK_DEV_DM \
 	CONFIG_DM_CRYPT \
-	CONFIG_DM_MIRROR
+	CONFIG_DM_MIRROR \
+  CONFIG_DM_DEBUG_BLOCK_MANAGER_LOCKING=n
   FILES:= \
     $(LINUX_DIR)/drivers/md/dm-mod.ko \
     $(LINUX_DIR)/drivers/md/dm-crypt.ko \
@@ -265,6 +266,40 @@ define KernelPackage/dm-raid/description
 endef
 
 $(eval $(call KernelPackage,dm-raid))
+
+
+define KernelPackage/dm-bufio
+  SUBMENU:=$(BLOCK_MENU)
+  TITLE:=Device Mapper buffer I/O support
+  DEPENDS:=+kmod-dm +kmod-md-mod
+  KCONFIG:= \
+	CONFIG_DM_BUFIO
+  FILES:=$(LINUX_DIR)/drivers/md/dm-bufio.ko
+  AUTOLOAD:=$(call AutoLoad,31,dm-bufio)
+endef
+
+define KernelPackage/dm-bufio/description
+  Kernel module necessary for Buffer I/O support
+endef
+
+$(eval $(call KernelPackage,dm-bufio))
+
+
+define KernelPackage/dm-integrity
+  SUBMENU:=$(BLOCK_MENU)
+  TITLE:=Device Mapper integrity support
+  DEPENDS:=+kmod-dm-raid +kmod-dm-bufio
+  KCONFIG:= \
+	CONFIG_DM_INTEGRITY
+  FILES:=$(LINUX_DIR)/drivers/md/dm-integrity.ko
+  AUTOLOAD:=$(call AutoLoad,32,dm-integrity)
+endef
+
+define KernelPackage/dm-integrity/description
+  Kernel module necessary for integrity
+endef
+
+$(eval $(call KernelPackage,dm-integrity))
 
 
 define KernelPackage/iscsi-initiator

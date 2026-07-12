@@ -103,6 +103,18 @@ define Build/qsdk-ipq-app-gpt
 	rm $@.tmp
 endef
 
+define Build/qsdk-glinet-recovery-emmc
+	$(call locked,$(TOPDIR)/scripts/qsdk-glinet-recovery-emmc.sh \
+		-s ./files/glinet-recovery-emmc.uboot \
+		-m $(call metadata_json) \
+		-k $(IMAGE_KERNEL) \
+		-r $(IMAGE_ROOTFS) \
+		-p $(STAGING_DIR_HOST)/bin/ptgen \
+		-o $@.its)
+	PATH=$(LINUX_DIR)/scripts/dtc:$(PATH) mkimage -f $@.its $@.new
+	@mv $@.new $@
+endef
+
 define Build/SenaoFW
 	-$(STAGING_DIR_HOST)/bin/mksenaofw \
 		-n $(BOARD_NAME) -r $(VENDOR_ID) -p $(1) \
@@ -636,11 +648,12 @@ define Device/glinet_gl-s1300
 	DEVICE_VENDOR := GL.iNet
 	DEVICE_MODEL := GL-S1300
 	SOC := qcom-ipq4029
-	KERNEL_SIZE := 4096k
-	IMAGE_SIZE := 26624k
-	IMAGES := sysupgrade.bin
-	IMAGE/sysupgrade.bin := append-kernel | append-rootfs | pad-rootfs | append-metadata
-	DEVICE_PACKAGES := kmod-fs-ext4 kmod-mmc kmod-spi-dev
+    KERNEL_SIZE := 32768k
+    IMAGE_SIZE := 131072k
+	IMAGES := recovery-qsdk.img sysupgrade.bin
+	IMAGE/recovery-qsdk.img := qsdk-glinet-recovery-emmc
+	IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+	DEVICE_PACKAGES := kmod-fs-f2fs mkf2fs kmod-mmc kmod-spi-dev
 endef
 TARGET_DEVICES += glinet_gl-s1300
 
@@ -797,6 +810,24 @@ define Device/linksys_whw03
 		kmod-fs-ext4 e2fsprogs kmod-fs-f2fs mkf2fs losetup ipq-wifi-linksys_whw03
 endef
 TARGET_DEVICES += linksys_whw03
+
+define Device/linksys_mr9000
+	$(call Device/FitzImage)
+	$(call Device/kernel-size-6350-8300)
+	DEVICE_VENDOR := Linksys
+	DEVICE_MODEL := MR9000
+	SOC := qcom-ipq4019
+	KERNEL_SIZE := 5120k
+	IMAGE_SIZE := 84992k
+	NAND_SIZE := 256m
+	BLOCKSIZE := 128k
+	PAGESIZE := 2048
+	UBINIZE_OPTS := -E 5    # EOD marks to "hide" factory sig at EOF
+	IMAGES += factory.bin
+	IMAGE/factory.bin  := append-kernel | pad-to $$$$(KERNEL_SIZE) | append-ubi | linksys-image type=MR9000
+	DEVICE_PACKAGES := ath10k-firmware-qca9888-ct kmod-usb-ledtrig-usbport
+endef
+TARGET_DEVICES += linksys_mr9000
 
 define Device/linksys_whw03v2
 	$(call Device/FitzImage)

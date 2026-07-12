@@ -1,0 +1,29 @@
+---
+services:
+  openwrt-builder:
+    container_name: openwrt-builder
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GROUP_ID: "${GID:-1000}"
+        USER_ID: "${UID:-1000}"
+    command: ["/bin/zsh"]
+    environment:
+      - CONFIG_HOST_EXTRA_CFLAGS="-O2 -pipe -march=native -mtune=native"
+      - CONFIG_HOST_EXTRA_CXXFLAGS=""
+    user: "${UID:-1000}:${GID:-1000}"
+    userns_mode: "host"
+    volumes:
+      - .:/home/builder/openwrt/repo:zrw
+      - ../feed:/home/builder/openwrt/feed:zrw
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 0o01777
+    networks:
+      - openwrt-builder-net
+
+networks:
+  openwrt-builder-net:
+    enable_ipv6: false

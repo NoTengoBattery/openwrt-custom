@@ -1,0 +1,185 @@
+diff --git a/lang/lua/lua5.4/Makefile b/lang/lua/lua5.4/Makefile
+index 3db0e30..7f043b6 100644
+--- a/lang/lua/lua5.4/Makefile
++++ b/lang/lua/lua5.4/Makefile
+@@ -86,6 +86,12 @@ endef
+ 
+ TARGET_CFLAGS += -DLUA_USE_LINUX $(FPIC) -std=gnu99
+ 
++ifdef CONFIG_TARGET_ramips_mt7621
++	TARGET_CFLAGS += -mno-mips16 -fPIC
++	TARGET_CXXFLAGS += -mno-mips16 -fPIC
++	TARGET_LDFLAGS += -mno-mips16 -fPIC
++endif
++
+ define Build/Compile
+ 	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) \
+ 		CC="$(TARGET_CROSS)gcc" \
+@@ -93,6 +99,7 @@ define Build/Compile
+ 		RANLIB="$(TARGET_CROSS)ranlib" \
+ 		INSTALL_ROOT=/usr \
+ 		CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS)" \
++		TARGET_LDFLAGS="$(TARGET_LDFLAGS)" \
+ 		PKG_VERSION=$(PKG_VERSION) \
+ 		linux
+ 	rm -rf $(PKG_INSTALL_DIR)
+diff --git a/lang/lua/lua5.4/patches/020-shared_liblua.patch b/lang/lua/lua5.4/patches/020-shared_liblua.patch
+index 615cda1..970ec60 100644
+--- a/lang/lua/lua5.4/patches/020-shared_liblua.patch
++++ b/lang/lua/lua5.4/patches/020-shared_liblua.patch
+@@ -97,7 +97,7 @@
+ -$(LUA_T): $(LUA_O) $(LUA_A)
+ -	$(CC) -o $@ $(LDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
+ +$(LUA_SO): $(CORE_O) $(LIB_O)
+-+	$(CC) -o $@ -Wl,-Bsymbolic-functions -shared -Wl,-soname="$@" $?
+++	$(CC) -o $@ $(TARGET_LDFLAGS) -Wl,-Bsymbolic-functions -shared -Wl,-soname="$@" $?
+ +	ln -fs $@ liblua$V.so.0.0
+ +	ln -fs $@ liblua$V.so.0
+ +	ln -fs $@ liblua$V.so
+diff --git a/libs/libpam/Makefile b/libs/libpam/Makefile
+index f388cb8..fba5cd1 100644
+--- a/libs/libpam/Makefile
++++ b/libs/libpam/Makefile
+@@ -40,6 +40,12 @@ define Package/libpam/description
+ 	The Linux-PAM Pluggable Authentication Modules.
+ endef
+ 
++ifdef CONFIG_TARGET_ramips_mt7621
++	TARGET_CFLAGS += -mno-mips16 -fPIC
++	TARGET_CXXFLAGS += -mno-mips16 -fPIC
++	TARGET_LDFLAGS += -mno-mips16 -fPIC
++endif
++
+ MESON_ARGS += \
+ 	-Dpamlocking=true \
+ 	-Daudit=disabled \
+diff --git a/libs/sqlite3/Makefile b/libs/sqlite3/Makefile
+index d115aff..c9e67c1 100644
+--- a/libs/sqlite3/Makefile
++++ b/libs/sqlite3/Makefile
+@@ -102,6 +102,12 @@ TARGET_CFLAGS += \
+ 	-DHAVE_EDITLINE=$(if $(CONFIG_SQLITE3_LIBEDIT),1,0) \
+ 	-DHAVE_READLINE=$(if $(CONFIG_SQLITE3_READLINE),1,0)
+ 
++ifdef CONFIG_TARGET_ramips_mt7621
++	TARGET_CFLAGS += -mno-mips16 -fPIC
++	TARGET_CXXFLAGS += -mno-mips16 -fPIC
++	TARGET_LDFLAGS += -mno-mips16 -fPIC
++endif
++
+ CONFIGURE_ARGS := \
+ 	$(filter-out --target=% $(DISABLE_IPV6) $(DISABLE_NLS),$(CONFIGURE_ARGS)) \
+ 	--disable-debug \
+diff --git a/multimedia/ffmpeg/Makefile b/multimedia/ffmpeg/Makefile
+index a95fe39..6a52b57 100644
+--- a/multimedia/ffmpeg/Makefile
++++ b/multimedia/ffmpeg/Makefile
+@@ -383,6 +383,12 @@ REAL_CPU_TYPE:=$(call qstrip,$(firstword $(subst +, ,$(CONFIG_CPU_TYPE))))
+ # Fixup cpu types recogized by ffmpeg configure
+ REAL_CPU_TYPE:=$(subst octeonplus,octeon+,$(REAL_CPU_TYPE))
+ 
++ifdef CONFIG_TARGET_ramips_mt7621
++	TARGET_CFLAGS += -fno-lto
++	TARGET_CXXFLAGS += -fno-lto
++	TARGET_LDFLAGS += -fno-lto
++endif
++
+ FFMPEG_CONFIGURE:= \
+ 	CFLAGS="$(TARGET_CFLAGS) $(TARGET_CPPFLAGS) $(FPIC)" \
+ 	LDFLAGS="$(TARGET_LDFLAGS)" \
+diff --git a/net/openssh/Makefile b/net/openssh/Makefile
+index 1e0503f..e717ea7 100644
+--- a/net/openssh/Makefile
++++ b/net/openssh/Makefile
+@@ -203,6 +203,12 @@ ifeq ($(BUILD_VARIANT),with-pam)
+ TARGET_LDFLAGS += -lpthread
+ endif
+ 
++ifdef CONFIG_TARGET_ramips_mt7621
++	TARGET_CFLAGS += -mno-mips16 -fPIC
++	TARGET_CXXFLAGS += -mno-mips16 -fPIC
++	TARGET_LDFLAGS += -mno-mips16 -fPIC
++endif
++
+ define Build/Compile
+ 	$(MAKE) -C $(PKG_BUILD_DIR) \
+ 		DESTDIR="$(PKG_INSTALL_DIR)" \
+diff --git a/net/samba4/Makefile b/net/samba4/Makefile
+index b33d8e2..8f77459 100644
+--- a/net/samba4/Makefile
++++ b/net/samba4/Makefile
+@@ -147,6 +147,12 @@ define Package/samba4-utils/description
+   Utilities collection
+ endef
+ 
++ifdef CONFIG_TARGET_ramips_mt7621
++	TARGET_CFLAGS += -mno-mips16 -fPIC
++	TARGET_CXXFLAGS += -mno-mips16 -fPIC
++	TARGET_LDFLAGS += -mno-mips16 -fPIC
++endif
++
+ TARGET_CFLAGS += $(FPIC) -std=gnu17
+ TARGET_LDFLAGS += -Wl,--as-needed $(if $(filter arm armeb mips mipsel powerpc,$(ARCH)),-latomic)
+ 
+diff --git a/net/smartdns/Makefile b/net/smartdns/Makefile
+index 584cce5..44efd62 100644
+--- a/net/smartdns/Makefile
++++ b/net/smartdns/Makefile
+@@ -6,12 +6,12 @@
+ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=smartdns
+-PKG_VERSION:=46.1
++PKG_VERSION:=48.2
+ PKG_RELEASE:=1
+ 
+ PKG_SOURCE:=$(PKG_NAME)-Release$(PKG_VERSION).tar.gz
+ PKG_SOURCE_URL:=https://codeload.github.com/pymumu/smartdns/tar.gz/refs/tags/Release$(PKG_VERSION)?
+-PKG_HASH:=6307503fa409b9c6b87556d1b1f8eaf99c7be5b06a9d479ec3589c875391a6b3
++PKG_HASH:=46efffbe46615d628b5dbb5dc8150da8dcecfdc6eec339f561638896ae66486b
+ PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-Release$(PKG_VERSION)
+ 
+ PKG_MAINTAINER:=Nick Peng <pymumu@gmail.com>
+@@ -30,7 +30,7 @@ define Package/smartdns
+   CATEGORY:=Network
+   TITLE:=smartdns server
+   SUBMENU:=IP Addresses and Names
+-  DEPENDS:=+libpthread +libopenssl
++  DEPENDS:=+libpthread +libopenssl +zlib
+   URL:=https://www.github.com/pymumu/smartdns/
+ endef
+ 
+diff --git a/sound/fdk-aac/Makefile b/sound/fdk-aac/Makefile
+index 4d429ba..362d37a 100644
+--- a/sound/fdk-aac/Makefile
++++ b/sound/fdk-aac/Makefile
+@@ -52,6 +52,12 @@ ifeq ($(CONFIG_FDK-AAC_OPTIMIZE_SPEED),y)
+ 	TARGET_LDFLAGS += -flto
+ endif
+ 
++ifdef CONFIG_TARGET_ramips_mt7621
++	TARGET_CFLAGS += -mno-mips16 -fPIC
++	TARGET_CXXFLAGS += -mno-mips16 -fPIC
++	TARGET_LDFLAGS += -mno-mips16 -fPIC
++endif
++
+ define Build/InstallDev
+ 	$(INSTALL_DIR) $(1)/usr/include
+ 	$(CP) $(PKG_INSTALL_DIR)/usr/include/fdk-aac $(1)/usr/include
+diff --git a/utils/lm-sensors/Makefile b/utils/lm-sensors/Makefile
+index a0012eb..ac3d65a 100644
+--- a/utils/lm-sensors/Makefile
++++ b/utils/lm-sensors/Makefile
+@@ -103,6 +103,12 @@ define Package/lm-sensors/conffiles
+ /etc/sensors.d
+ endef
+ 
++ifdef CONFIG_TARGET_ramips_mt7621
++	TARGET_CFLAGS += -mno-mips16 -fPIC
++	TARGET_CXXFLAGS += -mno-mips16 -fPIC
++	TARGET_LDFLAGS += -mno-mips16 -fPIC
++endif
++
+ define Build/Compile
+ 	+$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) \
+ 		$(TARGET_CONFIGURE_OPTS) \

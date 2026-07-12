@@ -1,0 +1,17 @@
+# Customization of build config for IPQ40xx (Generic)
+
+CONFIG_TARGET_mediatek_mt7622=y
+CONFIG_TARGET_OPTIMIZATION="-Os -pipe -mcpu=cortex-a53"
+CONFIG_KERNEL_CFLAGS="-pipe -march=armv8.5-a -mtune=cortex-a53"
+
+# All supported devices
+CONFIG_TARGET_mediatek_mt7622_DEVICE_netgear_wax206=y
+
+# Packages for every specific MT7622
+
+
+# Packages for all targets
+CONFIG_PACKAGE_luci-app-mwan3=y
+CONFIG_PACKAGE_luci-app-usteer=y
+CONFIG_PACKAGE_wpad-basic-mbedtls=n
+CONFIG_PACKAGE_wpad-mbedtls=y

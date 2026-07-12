@@ -1,4 +1,18 @@
-// SPDX-License-Identifier: GPL-2.0-only OR MIT
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ */
 
 #include "qcom-ipq4019.dtsi"
 #include <dt-bindings/gpio/gpio.h>
@@ -7,14 +21,36 @@
 #include <dt-bindings/soc/qcom,tcsr.h>
 
 / {
-	model = "GL.iNet GL-S1300";
+	model = "GL.iNet GL-S1300 (Convexa-S)";
 	compatible = "glinet,gl-s1300";
 
+	chosen {
+		bootargs-append = " root=/dev/mmcblk0p2 rootfstype=squashfs rootwait clk_ignore_unused";
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@87510000 {
+			compatible = "ramoops";
+			reg = <0x87510000 0x5f0000>;
+			console-size = <0x1f0000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
+
 	aliases {
-		led-boot = &led_power;
-		led-failsafe = &led_power;
-		led-running = &led_power;
-		led-upgrade = &led_power;
+		// TODO: Verify if the ethernet0 alias is needed
+		ethernet0 = &gmac;
+		led-boot = &power;
+		led-failsafe = &power;
+		led-running = &power;
+		led-upgrade = &power;
+		label-mac-device = &swport4;
 	};
 
 	memory {
@@ -69,11 +105,12 @@
 	leds {
 		compatible = "gpio-leds";
 
-		led_power: power {
+		power: power {
 			function = LED_FUNCTION_POWER;
 			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&tlmm 57 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
+			panic-indicator;
 		};
 
 		mesh {
@@ -85,7 +122,6 @@
 			function = LED_FUNCTION_WLAN;
 			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&tlmm 60 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "phy0tpt";
 		};
 	};
 };
@@ -128,7 +164,7 @@
 	status = "okay";
 	cs-gpios = <&tlmm 12 GPIO_ACTIVE_LOW>;
 
-	flash@0 {
+	mx25l25635f@0 {
 		compatible = "jedec,spi-nor";
 		reg = <0>;
 		spi-max-frequency = <24000000>;
@@ -190,20 +226,22 @@
 					#address-cells = <1>;
 					#size-cells = <1>;
 
+					macaddr_gmac0: macaddr@0 {
+						compatible = "mac-base";
+						reg = <0x0 0x6>;
+						#nvmem-cell-cells = <1>;
+					};
+
+					macaddr_gmac1: macaddr@6 {
+						reg = <0x6 0x6>;
+					};
+
 					precal_art_1000: precal@1000 {
 						reg = <0x1000 0x2f20>;
 					};
 
 					precal_art_5000: precal@5000 {
 						reg = <0x5000 0x2f20>;
-					};
-
-					macaddr_art_0: macaddr@0 {
-						reg = <0x0 0x6>;
-					};
-
-					macaddr_art_6: macaddr@6 {
-						reg = <0x6 0x6>;
 					};
 				};
 			};
@@ -358,9 +396,6 @@
 
 &gmac {
 	status = "okay";
-
-	nvmem-cells = <&macaddr_art_0>;
-	nvmem-cell-names = "mac-address";
 };
 
 &switch {
@@ -371,20 +406,23 @@
 	status = "okay";
 
 	label = "lan2";
+	nvmem-cell-names = "mac-address";
+	nvmem-cells = <&macaddr_gmac0 2>;
 };
 
 &swport4 {
 	status = "okay";
 
 	label = "lan1";
+	nvmem-cell-names = "mac-address";
+	nvmem-cells = <&macaddr_gmac0 0>;
 };
 
 &swport5 {
 	status = "okay";
 
-	label = "wan";
-	nvmem-cells = <&macaddr_art_6>;
 	nvmem-cell-names = "mac-address";
+	nvmem-cells = <&macaddr_gmac1>;
 };
 
 &wifi0 {
