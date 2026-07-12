@@ -299,6 +299,7 @@
 			sysdiag@5000000 {
 				label = "sysdiag";
 				reg = <0x05000000 0x00100000>;
+				read-only;
 			};
 			syscfg@5100000 {
 				label = "syscfg";
