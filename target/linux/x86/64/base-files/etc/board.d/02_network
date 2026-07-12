@@ -1,0 +1,14 @@
+#
+# Copyright © 2017 OpenWrt.org
+#
+
+. /lib/functions/system.sh
+. /lib/functions/uci-defaults.sh
+
+board_config_update
+
+ucidef_set_interfaces_lan_wan "eth1 eth2 eth3 eth4 eth5" "eth0"
+
+board_config_flush
+
+exit 0
