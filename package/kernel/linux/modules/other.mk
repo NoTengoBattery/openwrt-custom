@@ -711,24 +711,62 @@ endef
 $(eval $(call KernelPackage,ikconfig))
 
 
+define KernelPackage/io-schedulers
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Extra I/O Schedulers
+  KCONFIG:=CONFIG_MQ_IOSCHED_DEADLINE \
+    CONFIG_MQ_IOSCHED_KYBER \
+    CONFIG_IOSCHED_BFQ \
+    CONFIG_BFQ_GROUP_IOSCHED=y \
+    CONFIG_BFQ_CGROUP_DEBUG=n
+  FILES:= \
+    $(LINUX_DIR)/block/bfq.ko \
+    $(LINUX_DIR)/block/kyber-iosched.ko \
+    $(LINUX_DIR)/block/mq-deadline.ko
+  AUTOLOAD:=$(call AutoLoad,15,bfq kyber-iosched mq-deadline,1)
+endef
+
+define KernelPackage/io-schedulers/description
+ This package contains extra I/O schedulers
+endef
+
+$(eval $(call KernelPackage,io-schedulers))
+
+
+define KernelPackage/zsmalloc
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=ZSMALLOC
+  KCONFIG:= \
+    CONFIG_ZSMALLOC \
+    CONFIG_ZSMALLOC_CHAIN_SIZE=4 \
+    CONFIG_ZSMALLOC_STAT=n
+  FILES:=$(LINUX_DIR)/mm/zsmalloc.ko
+  AUTOLOAD:=$(call AutoLoad,15,zsmalloc)
+endef
+
+define KernelPackage/zsmalloc/description
+ Enable the zsmalloc zpool allocator
+endef
+
+$(eval $(call KernelPackage,zsmalloc))
+
+
 define KernelPackage/zram
   SUBMENU:=$(OTHER_MENU)
-  DEPENDS:= \
+  DEPENDS:=+kmod-zsmalloc \
 	+(KERNEL_ZRAM_BACKEND_LZO||KERNEL_ZRAM_DEF_COMP_LZORLE||KERNEL_ZRAM_DEF_COMP_LZO):kmod-lib-lzo \
 	+(KERNEL_ZRAM_BACKEND_LZ4||KERNEL_ZRAM_DEF_COMP_LZ4):kmod-lib-lz4 \
 	+(KERNEL_ZRAM_BACKEND_LZ4HC||KERNEL_ZRAM_DEF_COMP_LZ4HC):kmod-lib-lz4hc \
-	+(KERNEL_ZRAM_BACKEND_ZSTD||KERNEL_ZRAM_DEF_COMP_ZSTD):kmod-lib-zstd
+	+(KERNEL_ZRAM_BACKEND_ZSTD||KERNEL_ZRAM_DEF_COMP_ZSTD):kmod-lib-zstd \
+  +(KERNEL_ZRAM_BACKEND_DEFLATE||KERNEL_ZRAM_DEF_COMP_DEFLATE):kmod-crypto-deflate \
+  +(KERNEL_ZRAM_BACKEND_842||KERNEL_ZRAM_DEF_COMP_842):kmod-lib-842
   TITLE:=ZRAM
   KCONFIG:= \
-	CONFIG_ZSMALLOC \
 	CONFIG_ZRAM \
-	CONFIG_ZRAM_DEBUG=n \
-	CONFIG_ZRAM_WRITEBACK=n \
-	CONFIG_ZSMALLOC_STAT=n
+	CONFIG_ZRAM_DEBUG=n
   FILES:= \
-	$(LINUX_DIR)/mm/zsmalloc.ko \
-	$(LINUX_DIR)/drivers/block/zram/zram.ko
-  AUTOLOAD:=$(call AutoLoad,20,zsmalloc zram)
+    $(LINUX_DIR)/drivers/block/zram/zram.ko
+  AUTOLOAD:=$(call AutoLoad,20,zram)
 endef
 
 define KernelPackage/zram/description
@@ -737,6 +775,13 @@ endef
 
 define KernelPackage/zram/config
   if PACKAGE_kmod-zram
+    config KERNEL_ZRAM_WRITEBACK
+            bool "Enable writeback support"
+            default n
+            help
+              Enable writeback support for ZRAM. This allows ZRAM to write
+              idle/incompressible pages to a backing device.
+
     config KERNEL_ZRAM_BACKEND_LZO
             bool "lzo and lzo-rle compression support"
 
@@ -749,14 +794,31 @@ define KernelPackage/zram/config
     config KERNEL_ZRAM_BACKEND_ZSTD
             bool "zstd compression support"
 
+    config KERNEL_ZRAM_BACKEND_DEFLATE
+            bool "deflate compression support"
+
+    config KERNEL_ZRAM_BACKEND_842
+            bool "842 compression support"
+
     config KERNEL_ZRAM_BACKEND_FORCE_LZO
             def_bool !KERNEL_ZRAM_BACKEND_LZ4 && \
                      !KERNEL_ZRAM_BACKEND_LZ4HC && \
-                     !KERNEL_ZRAM_BACKEND_ZSTD
+                     !KERNEL_ZRAM_BACKEND_ZSTD && \
+                     !KERNEL_ZRAM_BACKEND_DEFLATE && \
+                     !KERNEL_ZRAM_BACKEND_842
             select KERNEL_ZRAM_BACKEND_LZO
+
     choice
       prompt "ZRAM Default compressor"
-      default KERNEL_ZRAM_DEF_COMP_LZORLE
+      default KERNEL_ZRAM_DEF_COMP_ZSTD
+
+    config KERNEL_ZRAM_DEF_COMP_842
+            bool "842"
+            depends on KERNEL_ZRAM_BACKEND_842
+
+    config KERNEL_ZRAM_DEF_COMP_DEFLATE
+            bool "deflate"
+            depends on KERNEL_ZRAM_BACKEND_DEFLATE
 
     config KERNEL_ZRAM_DEF_COMP_LZORLE
             bool "lzo-rle"
@@ -783,6 +845,107 @@ define KernelPackage/zram/config
 endef
 
 $(eval $(call KernelPackage,zram))
+
+
+define KernelPackage/zswap
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=ZSWAP (Compressed Swap Cache)
+  DEPENDS:=+kmod-zsmalloc \
+	+(KERNEL_ZSWAP_COMPRESSOR_DEFAULT_LZO):kmod-lib-lzo \
+	+(KERNEL_ZSWAP_COMPRESSOR_DEFAULT_LZ4):kmod-lib-lz4 \
+	+(KERNEL_ZSWAP_COMPRESSOR_DEFAULT_LZ4HC):kmod-lib-lz4hc \
+  +(KERNEL_ZSWAP_COMPRESSOR_DEFAULT_ZSTD):kmod-lib-zstd \
+	+(KERNEL_ZSWAP_COMPRESSOR_DEFAULT_DEFLATE):kmod-crypto-deflate \
+	+(KERNEL_ZSWAP_COMPRESSOR_DEFAULT_842):kmod-lib-842
+  KCONFIG:= \
+  CONFIG_SWAP=y \
+	CONFIG_ZSWAP=y \
+	CONFIG_ZSWAP_DEFAULT_ON=n \
+	CONFIG_ZBUD=y \
+  CONFIG_ZSWAP_ZPOOL_DEFAULT_Z3FOLD_DEPRECATED=n \
+  CONFIG_Z3FOLD_DEPRECATED=n
+  FILES:=
+  AUTOLOAD:=
+endef
+
+define KernelPackage/zswap/description
+ Compressed cache for swap pages
+endef
+
+define KernelPackage/zswap/config
+  if PACKAGE_kmod-zswap
+    config KERNEL_ZSWAP_SHRINKER_DEFAULT_ON
+            bool "Shrink the zswap pool on memory pressure"
+            default n
+            help
+              If selected, the zswap shrinker will be enabled, and the pages
+              stored in the zswap pool will become available for reclaim on
+              memory pressure.
+
+    choice
+      prompt "ZSWAP Default compressor"
+      depends on PACKAGE_kmod-zswap
+      default KERNEL_ZSWAP_COMPRESSOR_DEFAULT_LZ4
+
+    config KERNEL_ZSWAP_COMPRESSOR_DEFAULT_LZO
+            bool "lzo and lzo-rle compression support"
+
+    config KERNEL_ZSWAP_COMPRESSOR_DEFAULT_LZ4
+            bool "lz4 compression support"
+
+    config KERNEL_ZSWAP_COMPRESSOR_DEFAULT_LZ4HC
+            bool "lz4hc compression support"
+
+    config KERNEL_ZSWAP_COMPRESSOR_DEFAULT_ZSTD
+            bool "zstd compression support"
+
+    config KERNEL_ZSWAP_COMPRESSOR_DEFAULT_DEFLATE
+            bool "deflate compression support"
+
+    config KERNEL_ZSWAP_COMPRESSOR_DEFAULT_842
+            bool "842 compression support"
+
+    endchoice
+
+    config KERNEL_ZSWAP_COMPRESSOR_DEFAULT
+            string
+            depends on PACKAGE_kmod-zswap
+            default "deflate" if KERNEL_ZSWAP_COMPRESSOR_DEFAULT_DEFLATE
+            default "lzo" if KERNEL_ZSWAP_COMPRESSOR_DEFAULT_LZO
+            default "842" if KERNEL_ZSWAP_COMPRESSOR_DEFAULT_842
+            default "lz4" if KERNEL_ZSWAP_COMPRESSOR_DEFAULT_LZ4
+            default "lz4hc" if KERNEL_ZSWAP_COMPRESSOR_DEFAULT_LZ4HC
+            default "zstd" if KERNEL_ZSWAP_COMPRESSOR_DEFAULT_ZSTD
+            default ""
+
+    choice
+      prompt "ZSWAP Default allocator"
+      depends on PACKAGE_kmod-zswap
+      default KERNEL_ZSWAP_ZPOOL_DEFAULT_ZSMALLOC
+
+    config KERNEL_ZSWAP_ZPOOL_DEFAULT_ZBUD
+            bool "zbud"
+
+    config KERNEL_ZSWAP_ZPOOL_DEFAULT_ZSMALLOC
+            bool "zsmalloc"
+    
+    config ZSWAP_ZPOOL_DEFAULT_Z3FOLD_DEPRECATED
+            bool "z3fold"
+
+    endchoice
+
+    config KERNEL_ZSWAP_ZPOOL_DEFAULT
+            string
+            depends on PACKAGE_kmod-zswap
+            default "zbud" if KERNEL_ZSWAP_ZPOOL_DEFAULT_ZBUD
+            default "zsmalloc" if KERNEL_ZSWAP_ZPOOL_DEFAULT_ZSMALLOC
+            default "z3fold" if ZSWAP_ZPOOL_DEFAULT_Z3FOLD_DEPRECATED
+            default ""
+  endif
+endef
+
+$(eval $(call KernelPackage,zswap))
+
 
 define KernelPackage/pps
   SUBMENU:=$(OTHER_MENU)
