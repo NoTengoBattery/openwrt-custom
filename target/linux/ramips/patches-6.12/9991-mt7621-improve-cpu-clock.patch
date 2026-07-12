@@ -1,0 +1,60 @@
+From: Oever González <software@notengobattery.com>
+Subject: [PATCH] mt7621: improve CPU clock
+Date: Thu, 29 May 2025 22:26:33 -0600
+
+recalc_rate only read back whatever fbdiv the bootloader left in
+MEMC_REG_CPU_PLL. Compute and write the fbdiv for
+MT7621A_TARGET_CLOCK_HZ instead, then read the PLL back for the
+actual rate.
+
+Signed-off-by: Oever González <software@notengobattery.com>
+---
+Index: linux-6.12.87/drivers/clk/ralink/clk-mt7621.c
+===================================================================
+--- linux-6.12.87.orig/drivers/clk/ralink/clk-mt7621.c
++++ linux-6.12.87/drivers/clk/ralink/clk-mt7621.c
+@@ -15,6 +15,7 @@
+ #include <linux/slab.h>
+ #include <dt-bindings/clock/mt7621-clk.h>
+ #include <dt-bindings/reset/mt7621-reset.h>
++#include <linux/math64.h>
+ 
+ /* Configuration registers */
+ #define SYSC_REG_SYSTEM_CONFIG0         0x10
+@@ -25,6 +26,8 @@
+ #define SYSC_REG_CUR_CLK_STS		0x44
+ #define MEMC_REG_CPU_PLL		0x648
+ 
++#define MT7621A_TARGET_CLOCK_HZ		1000000000
++
+ #define XTAL_MODE_SEL_MASK		GENMASK(8, 6)
+ #define CPU_CLK_SEL_MASK		GENMASK(31, 30)
+ #define CUR_CPU_FDIV_MASK		GENMASK(12, 8)
+@@ -259,7 +262,7 @@ static unsigned long mt7621_cpu_recalc_r
+ 	struct regmap *sysc = clk->priv->sysc;
+ 	struct regmap *memc = clk->priv->memc;
+ 	u32 clkcfg, clk_sel, curclk, ffiv, ffrac;
+-	u32 pll, prediv, fbdiv;
++	u32 pll, prediv, fbdiv, target_pll, target_fbdiv;
+ 	unsigned long cpu_clk;
+ 
+ 	regmap_read(sysc, SYSC_REG_CLKCFG0, &clkcfg);
+@@ -277,6 +280,18 @@ static unsigned long mt7621_cpu_recalc_r
+ 		regmap_read(memc, MEMC_REG_CPU_PLL, &pll);
+ 		fbdiv = FIELD_GET(CPU_PLL_FBDIV_MASK, pll);
+ 		prediv = FIELD_GET(CPU_PLL_PREDIV_MASK, pll);
++		target_fbdiv = div_u64(((u64)MT7621A_TARGET_CLOCK_HZ * ffiv), ffrac);
++		target_fbdiv = target_fbdiv << prediv_tbl[prediv];
++		target_fbdiv = (target_fbdiv / xtal_clk) - 1;
++		target_pll = pll & ~FIELD_PREP(CPU_PLL_FBDIV_MASK, fbdiv);
++		target_pll |= FIELD_PREP(CPU_PLL_FBDIV_MASK, target_fbdiv);
++		pr_info("Setting CPU PLL to %u\n", target_pll);
++		regmap_write(memc, MEMC_REG_CPU_PLL, target_pll);
++
++		regmap_read(memc, MEMC_REG_CPU_PLL, &pll);
++		fbdiv = FIELD_GET(CPU_PLL_FBDIV_MASK, pll);
++		prediv = FIELD_GET(CPU_PLL_PREDIV_MASK, pll);
++
+ 		cpu_clk = ((fbdiv + 1) * xtal_clk) >> prediv_tbl[prediv];
+ 		break;
+ 	default:
