@@ -154,7 +154,7 @@ else
 			{ echo ""; echo ""; } >> Packages;; \
 		esac; \
 		$(SCRIPT_DIR)/make-index-json.py -f opkg -a "$(ARCH_PACKAGES)" Packages > index.json; \
-		gzip -9nc Packages > Packages.gz; \
+		pigz -9nc Packages > Packages.gz; \
 	); done
 ifdef CONFIG_SIGNED_PACKAGES
 	@echo Signing package index...
