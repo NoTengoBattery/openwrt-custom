@@ -10,6 +10,21 @@
 	model = "Linksys EA6350v3";
 	compatible = "linksys,ea6350v3";
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@87510000 {
+			compatible = "ramoops";
+			reg = <0x87510000 0x5f0000>;
+			console-size = <0x1f0000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
+
 	aliases {
 		// TODO: Verify if the ethernet0 alias is needed
 		ethernet0 = &gmac;
@@ -68,6 +83,7 @@
 			function = LED_FUNCTION_STATUS;
 			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&tlmm 2 GPIO_ACTIVE_HIGH>;
+			panic-indicator;
 		};
 	};
 };
