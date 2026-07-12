@@ -99,6 +99,9 @@ ifeq ($(CONFIG_SQUASHFS_XZ),y)
   endif
   SQUASHFSCOMP := xz $(LZMA_XZ_OPTIONS) $(BCJ_FILTER)
 endif
+ifeq ($(CONFIG_SQUASHFS_ZSTD),y)
+  SQUASHFSCOMP := zstd -Xcompression-level 22
+endif
 
 JFFS2_BLOCKSIZE ?= 64k 128k
 

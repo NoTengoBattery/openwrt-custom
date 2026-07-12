@@ -193,6 +193,25 @@ menu "Target Images"
 			help
 			  Specify the number of parallel small file reader threads
 			  (for files less than the squashfs block size).
+		
+		config SQUASHFS_ZSTD
+			bool "Enable Zstd compression support in mksquashfs"
+			depends on TARGET_ROOTFS_SQUASHFS
+			select KERNEL_SQUASHFS_ZSTD
+			default y
+			help
+			  Enable Zstd compression support in mksquashfs. This allows
+			  using Zstd as the compression method for squashfs images.
+			  Note that this does not enable Zstd compression for the rootfs
+			  image by default, you still need to select it in the compression choice.
+		
+		config KERNEL_SQUASHFS_ZSTD
+			bool
+			depends on SQUASHFS_ZSTD
+			default y if SQUASHFS_ZSTD
+			help
+			  Enable Zstd decompression support in the kernel. This is required
+			  to boot from squashfs images compressed with Zstd.
 
 	menuconfig TARGET_ROOTFS_UBIFS
 		bool "ubifs"

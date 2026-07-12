@@ -612,7 +612,8 @@ define KernelPackage/fs-squashfs
   SUBMENU:=$(FS_MENU)
   TITLE:=SquashFS 4.0 filesystem support
   KCONFIG:=CONFIG_SQUASHFS \
-	CONFIG_SQUASHFS_XZ=y
+	CONFIG_SQUASHFS_XZ=y \
+	CONFIG_SQUASHFS_ZSTD=y
   FILES:=$(LINUX_DIR)/fs/squashfs/squashfs.ko
   AUTOLOAD:=$(call AutoLoad,30,squashfs,1)
 endef
