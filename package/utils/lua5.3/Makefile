@@ -79,6 +79,12 @@ endef
 
 TARGET_CFLAGS += -DLUA_USE_LINUX $(FPIC) -std=gnu99
 
+ifdef CONFIG_TARGET_ramips_mt7621
+	TARGET_CFLAGS += -mno-mips16 -fPIC
+	TARGET_CXXFLAGS += -mno-mips16 -fPIC
+	TARGET_LDFLAGS += -mno-mips16 -fPIC
+endif
+
 define Build/Compile
 	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) \
 		CC="$(TARGET_CROSS)gcc" \

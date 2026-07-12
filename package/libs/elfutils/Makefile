@@ -88,6 +88,10 @@ TARGET_CFLAGS += \
 	-Wno-format-nonliteral \
 	-Wno-error=use-after-free
 
+ifeq ($(CONFIG_TARGET_ramips_mt7621),y)
+	TARGET_LDFLAGS += -fPIC
+endif
+
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include
 	$(CP) $(PKG_INSTALL_DIR)/usr/include/* $(1)/usr/include/
