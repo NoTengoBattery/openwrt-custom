@@ -154,7 +154,8 @@ platform_do_upgrade() {
 		CI_UBIPART="ubifs"
 		askey_do_upgrade "$1"
 		;;
-	glinet,gl-b2200)
+	glinet,gl-b2200|\
+	glinet,gl-s1300)
 		CI_KERNPART="0:HLOS"
 		CI_ROOTPART="rootfs"
 		CI_DATAPART="rootfs_data"
@@ -249,6 +250,7 @@ platform_do_upgrade() {
 platform_copy_config() {
 	case "$(board_name)" in
 	glinet,gl-b2200|\
+	glinet,gl-s1300|\
 	google,wifi|\
 	linksys,whw03)
 		emmc_copy_config
