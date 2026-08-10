@@ -1,0 +1,21 @@
+# SCOPE: all targets, all size tiers        LEVEL: =m only
+#
+# Packages built and published to the package repository for post-install,
+# but never baked into an image. Anything that must be present at boot
+# belongs in config-features.seed (=y) instead.
+#
+# A later seed may promote any of these to =y for one target; see README.md.
+
+CONFIG_PACKAGE_6rd=m
+CONFIG_PACKAGE_libopenssl-afalg=m
+CONFIG_PACKAGE_libopenssl-afalg_sync=m
+CONFIG_PACKAGE_libopenssl-devcrypto=m
+CONFIG_PACKAGE_luci-app-advanced-reboot=m
+CONFIG_PACKAGE_luci-app-nlbwmon=m
+CONFIG_PACKAGE_luci-app-samba4=m
+CONFIG_PACKAGE_minidlna=m
+
+# notengobattery-defaults stages /etc/config/unbound and
+# /etc/unbound/unbound_srv.conf, so installing this later just works.
+# dnsmasq-full remains the baked-in resolver on every target.
+CONFIG_PACKAGE_unbound-daemon=m

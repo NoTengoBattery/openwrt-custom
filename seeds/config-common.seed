@@ -16,11 +16,17 @@ CONFIG_USE_LTO=y
 CONFIG_USE_MOLD=y
 
 CONFIG_TARGET_INITRAMFS_COMPRESSION_ZSTD=y
-CONFIG_TARGET_PER_DEVICE_ROOTFS=y
 CONFIG_TARGET_ROOTFS_TARGZ=y
+
+# Only exists under TARGET_MULTI_PROFILE, so this is inert on x86-64,
+# which builds single-profile (see target-x86-64.seed). Not a bug.
+CONFIG_TARGET_PER_DEVICE_ROOTFS=y
 
 # Common packages to build/install
 CONFIG_PACKAGE_notengobattery-defaults=y
 CONFIG_PACKAGE_notengobattery-preboot=y
 CONFIG_PACKAGE_notengobattery-scripts=y
+# Not a typo: shadow-all is a real kconfig symbol inside
+# Package/shadow-utils/config, not a package. Opts out of the whole PLD
+# suite so only the shadow-* applets in notengobattery-defaults get built.
 CONFIG_shadow-all=n

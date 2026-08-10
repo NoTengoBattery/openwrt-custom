@@ -51,6 +51,7 @@ my ($fConfig)               = catfile( glob($curDir),   '.config' );
 my ($fConfigSeed)           = catfile( glob($curDir),   'config.seed' );
 my ($fCommonSeed)           = catfile( glob($dSeed),    'config-common.seed' );
 my ($fFeaturesSeed)         = catfile( glob($dSeed),    'config-features.seed' );
+my ($fAvailableSeed)        = catfile( glob($dSeed),    'config-available.seed' );
 my ($fKernelSeed)           = catfile( glob($dSeed),    'kernel.seed' );
 my ($fKernelCommonSeed)     = catfile( glob($dSeed),    'kernel-common.seed' );
 my ($fKernelTargetSeed)     = catfile( glob($dSeed),    'kernel-' . TARGET . '.seed' );
@@ -69,6 +70,8 @@ open( COMMON_SEED, "<", glob($fCommonSeed) )
   or die qq(Could not open file '$fCommonSeed' (COMMON_SEED): $!);
 open( FEATURES_SEED, "<", glob($fFeaturesSeed) )
   or die qq(Could not open file '$fFeaturesSeed' (FEATURES_SEED): $!);
+open( AVAILABLE_SEED, "<", glob($fAvailableSeed) )
+  or die qq(Could not open file '$fAvailableSeed' (AVAILABLE_SEED): $!);
 open( KERNEL_SEED, "<", glob($fKernelSeed) )
   or die qq(Could not open file '$fKernelSeed' (KERNEL_SEED): $!);
 open( TARGET_SEED, "<", glob($fTargetSeed) )
@@ -104,6 +107,7 @@ printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_REPO",        glob($downloadURL) )
 printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_SUPPORT_URL", glob($supportURL) );
 print( CONFIG <COMMON_SEED>,    "\n" );
 print( CONFIG <FEATURES_SEED>,  "\n" );
+print( CONFIG <AVAILABLE_SEED>, "\n" );
 print( CONFIG <KERNEL_SEED>,    "\n" );
 print( CONFIG <TARGET_SEED>,    "\n" );
 print( CONFIG <SUBTARGET_SEED>, "\n" );
@@ -134,7 +138,10 @@ system("rm -rf .config.old");
 system("make -j32 defconfig");
 system("rm -rf .config.old");
 system("make -j32 kernel_oldconfig");
-system("find ./bin -type f -exec rm -f {} +");
+my ($fBinTarget) = catdir( glob($curDir), 'bin', 'targets', TARGET, SUBTARGET );
+for my $binDir ( glob( $fBinTarget . '*' ) ) {
+  system( "find " . $binDir . " -type f -exec rm -f {} +" ) if -d $binDir;
+}
 print( CONFIG_SEED readpipe("$fScriptDiff") );
 
 print("\n\nProject configured. Now is a good moment to build.\n")
