@@ -99,6 +99,17 @@
 	status = "okay";
 };
 
+/*
+ * Fan policy is managed by luci-app-h5000m-fancontrol. Keep the CPU cooling,
+ * hot and critical trips intact, but prevent the thermal governor from racing
+ * userspace for the same PWM output.
+ */
+&{/thermal-zones/cpu-thermal/cooling-maps} {
+	/delete-node/ cpu-active-high;
+	/delete-node/ cpu-active-low;
+	/delete-node/ cpu-passive;
+};
+
 &gmac0 {
 	phy-mode = "2500base-x";
 	phy-handle = <&phy0>;
