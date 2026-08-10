@@ -28,10 +28,6 @@ use constant {
     VERSION           => $ENV{VER} || 'v6.12.5'
 };
 
-my ($kconfgPathPatternSub) =
-  sprintf '*/%s/%s/*config-*.*', TARGET, SUBTARGET;
-my ($kconfgPathPatternMain) =
-  sprintf '*/%s/*config-*.*', TARGET;
 my ($releaseURL) =
   'https://' . catdir( ROOT_URL, PROJECTS, PROJECT_NAME, RELEASES, VERSION );
 my ($issuesURL) =
@@ -61,10 +57,47 @@ my ($fTargetSeed)           = catfile( glob($dSeed),    'target-' . TARGET . '.s
 my ($fSubtargetSeed)        = catfile( glob($dSeed),    'target-' . TARGET . '-' . SUBTARGET . '.seed' );
 my ($fScriptDiff)           = catfile( glob($dScripts), 'diffconfig.sh' );
 
-my ($subkconfg) =
-  readpipe( sprintf "find %s -type f -path '%s' | head -n 1", $linuxTarget, $kconfgPathPatternSub );
+sub kernelPatchver {
+    my ($mk) = catfile( $linuxTarget, TARGET, 'Makefile' );
+    open( my $fh, "<", $mk )
+      or die qq(Could not open file '$mk' (KERNEL_PATCHVER): $!);
+    while ( my $line = <$fh> ) {
+        next unless $line =~ /^\s*KERNEL_PATCHVER\s*[:?]?=\s*(\S+)/;
+        close($fh);
+        return $1;
+    }
+    close($fh);
+    die qq(Could not find KERNEL_PATCHVER in '$mk'\n);
+}
+
+# $(call find_kernel_config,<dir>): first of config-<ver> / config-default that
+# exists, else config-default whether or not it exists.
+sub findKernelConfig {
+    my ( $dir, $ver ) = @_;
+    my (@names) =
+      ( catfile( $dir, 'config-' . $ver ), catfile( $dir, 'config-default' ) );
+    foreach my $name (@names) {
+        return $name if -f $name;
+    }
+    return $names[-1];
+}
+
+my ($kver)           = kernelPatchver();
+my ($platformDir)    = catdir( $linuxTarget, TARGET );
+my ($platformSubDir) = catdir( $linuxTarget, TARGET, SUBTARGET );
+my ($targetKconfg)   = findKernelConfig( $platformDir, $kver );
+my ($subtargetKconfg) =
+    $platformDir eq $platformSubDir
+  ? undef
+  : findKernelConfig( $platformSubDir, $kver );
+
+# LINUX_RECONFIG_TARGET: the subtarget config only when the target has none.
 my ($kconfg) =
-    readpipe( sprintf "find %s -type f -path '%s' | head -n 1", $linuxTarget, $kconfgPathPatternMain );
+  ( !-f $targetKconfg && defined($subtargetKconfg) )
+  ? $subtargetKconfg
+  : $targetKconfg;
+
+printf( "Kernel seeds -> %s (KERNEL_PATCHVER %s)\n", $kconfg, $kver );
 
 open( COMMON_SEED, "<", glob($fCommonSeed) )
   or die qq(Could not open file '$fCommonSeed' (COMMON_SEED): $!);
@@ -90,14 +123,13 @@ open( CONFIG_SEED, ">", glob($fConfigSeed) )
   or die qq(Could not open file '$fConfigSeed' (CONFIG_SEED): $!);
 open( CONFIG, ">", glob($fConfig) )
   or die qq(Could not open file '$fConfig' (CONFIG): $!);
-system("git checkout " . $kconfg);
+# Drop any seed text a previous run appended before appending again.
+if ( -f $kconfg ) {
+    system( 'git', 'checkout', '--', $kconfg ) == 0
+      or warn qq(Warning: could not reset '$kconfg'; it may carry stale seed text\n);
+}
 open( KCONFIG, ">>", glob($kconfg) )
   or die qq(Could not open file '$kconfg' (KCONFIG): $!);
-if ( defined($subkconfg) && -f glob($subkconfg) ) {
-open( SUBKCONFIG, ">>", glob($subkconfg) )
-  or die qq(Could not open file '$subkconfg' (SUBKCONFIG): $!);
-}
-  
 
 printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_BUG_URL",     glob($issuesURL) );
 printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_DIST",        DIST );
@@ -114,19 +146,17 @@ print( CONFIG <SUBTARGET_SEED>, "\n" );
 print( CONFIG <PACKAGE_SEED>,   "\n" );
 close(CONFIG);
 
-print( KCONFIG <KERNEL_COMMON_SEED>, "\n" );
-print( KCONFIG <KERNEL_TARGET_SEED>, "\n" );
-if ( !defined($subkconfg) || !-f glob($subkconfg) ) {
-  print( KCONFIG <KERNEL_SUBTARGET_SEED>, "\n" );
-}
-close(KCONFIG);
+# All three kernel seeds go to the single reconfig target. Read each handle
+# into a list first: a filehandle in list context is drained by one read, so
+# reading the same handle twice silently yields nothing the second time.
+my (@kernelCommonSeed)    = <KERNEL_COMMON_SEED>;
+my (@kernelTargetSeed)    = <KERNEL_TARGET_SEED>;
+my (@kernelSubtargetSeed) = <KERNEL_SUBTARGET_SEED>;
 
-if ( defined($subkconfg) && -f glob($subkconfg) ) {
-  print( SUBKCONFIG <KERNEL_COMMON_SEED>, "\n" );
-  print( SUBKCONFIG <KERNEL_TARGET_SEED>, "\n" );
-  print( SUBKCONFIG <KERNEL_SUBTARGET_SEED>, "\n" );
-  close(SUBKCONFIG);
-}
+print( KCONFIG @kernelCommonSeed,    "\n" );
+print( KCONFIG @kernelTargetSeed,    "\n" );
+print( KCONFIG @kernelSubtargetSeed, "\n" );
+close(KCONFIG);
 
 # Wipe all cached build metadata before touching the feeds.
 system("rm -rf feeds/*.tmp feeds/*.index feeds/*.targetindex tmp/info tmp/.packageinfo tmp/.targetinfo");
