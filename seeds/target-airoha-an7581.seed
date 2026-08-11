@@ -1,0 +1,22 @@
+# Customization of build config for Airoha (AN7581)
+
+CONFIG_TARGET_airoha_an7581=y
+CONFIG_TARGET_OPTIMIZATION="-Os -pipe -mcpu=cortex-a53"
+CONFIG_KERNEL_CFLAGS="-pipe -march=armv8-a -mtune=cortex-a53"
+
+# All supported devices
+CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi=y
+
+# The installer profile embeds the images the line above produces, so it cannot
+# be seeded: build_me.pl empties bin/targets before every build. Second pass is
+#   sed -i '/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi=y$/d' .config
+#   echo 'CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi-installer=y' >> .config
+#   make defconfig && make
+# Dropping the base device matters: leaving it selected rebuilds its images after
+# the payload has been copied, so what ships differs from what is embedded.
+
+# Packages for every specific AN7581
+# (none: the W1700K's PHY, fan, NPU and wifi firmware are per-device and live
+#  in Device/gemtek_w1700k-ubi DEVICE_PACKAGES in image/an7581.mk)
+
+# The wireless stack is declared at family scope; see target-airoha.seed.

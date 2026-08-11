@@ -1,0 +1,10 @@
+# Customization of kernel config for Airoha (AN7581)
+
+CONFIG_CMDLINE=""
+
+# No AN7581 board built here has an audio codec, and the afe node is disabled
+# in an7581.dtsi. Leaving this on exposes SND_SOC_AN7581_WM8960 (depends on
+# I2C) only once a kmod enables I2C, which is after kernel_oldconfig has run.
+# CONFIG_SND_SOC_AN7581 is not set
+
+CONFIG_DEFAULT_HOSTNAME="AN7581"
