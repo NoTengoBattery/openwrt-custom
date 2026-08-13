@@ -1,0 +1,30 @@
+#!/bin/bash
+# LOG=<console-capture-file> [TTY=/dev/ttyUSB1] sertx "<command>" [wait_seconds]
+#
+# Send a line to the device console one character at a time.
+# The vendor console drops characters when written at full speed with no flow
+# control ("printenv ethact" arrived as "printenvact"), which is unacceptable for
+# commands like flash erase/write. 8ms per char is ~125 chars/s, well under what
+# it can absorb.
+set -u
+: "${LOG:?set LOG to the file your console capture is appending to}"
+L="$LOG"
+TTY="${TTY:-/dev/ttyUSB1}"
+cmd="$1"; wait="${2:-3}"
+start=$(wc -c < "$L")
+
+for (( i=0; i<${#cmd}; i++ )); do
+  printf '%s' "${cmd:$i:1}" > "$TTY"
+  sleep 0.008
+done
+printf '\n' > "$TTY"
+sleep "$wait"
+
+# Echo check: the console should have echoed the command back verbatim.
+new=$(tail -c +$((start+1)) "$L")
+if printf '%s' "$new" | tr -d '\r\n' | grep -qF "$(printf '%s' "$cmd" | tr -d ' ')"; then
+  :
+else
+  printf '!! ECHO MISMATCH - command may have been mangled, check below\n' >&2
+fi
+printf '%s' "$new"
