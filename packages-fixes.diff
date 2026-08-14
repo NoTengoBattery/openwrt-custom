@@ -87,6 +87,22 @@ index a95fe39..6a52b57 100644
  FFMPEG_CONFIGURE:= \
  	CFLAGS="$(TARGET_CFLAGS) $(TARGET_CPPFLAGS) $(FPIC)" \
  	LDFLAGS="$(TARGET_LDFLAGS)" \
+diff --git a/net/mdio-tools/Makefile b/net/mdio-tools/Makefile
+index 5f6720a..0158742 100644
+--- a/net/mdio-tools/Makefile
++++ b/net/mdio-tools/Makefile
+@@ -11,6 +11,11 @@ PKG_MIRROR_HASH:=faa3ad7dd254361c6a9f044aa134982cbeec0423149726e82363833b9f0e0f1
+ 
+ PKG_FIXUP:=autoreconf
+ 
++# Subcommands are registered in a custom "cmds" linker section and reached only
++# via __start_cmds/__stop_cmds. LTO sees no direct reference and drops them, so
++# the link fails with undefined __start_cmds.
++PKG_BUILD_FLAGS:=no-lto
++
+ PKG_LICENSE:=GPL-2.0-only
+ PKG_LICENSE_FILES:=COPYING
+ 
 diff --git a/net/openssh/Makefile b/net/openssh/Makefile
 index 1e0503f..e717ea7 100644
 --- a/net/openssh/Makefile
