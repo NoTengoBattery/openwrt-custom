@@ -88,9 +88,13 @@ define Device/gemtek_w1700k-ubi
   DEVICE_COMPAT_MESSAGE := Partition table has been changed to cooperate \
        with the vendor bootloader with regard to the BMT/BBT partition at \
        the end of flash. A reinstall including corrected chainloader is needed.
+  # mdio-tools: the 10G PHYs are C45, so their identity is invisible to sysfs
+  # (phy_id reads 0x0) and unreachable from U-Boot, which never releases their
+  # reset GPIOs. Reading them needs a tool on the running system.
   DEVICE_PACKAGES := airoha-en7581-mt7996-npu-firmware \
 		    fitblk kmod-i2c-an7581 kmod-hwmon-nct7802 \
-		    kmod-mt7996-firmware kmod-phy-rtl8261n
+		    kmod-mdio-netlink kmod-mt7996-firmware \
+		    kmod-phy-rtl8261ce mdio-tools
   UBINIZE_OPTS := -E 5
   BLOCKSIZE := 128k
   PAGESIZE := 2048
@@ -114,6 +118,11 @@ TARGET_DEVICES += gemtek_w1700k-ubi
 define Device/gemtek_w1700k-ubi-installer
   $(Device/gemtek_w1700k-ubi)
   DEVICE_VARIANT := UBI Installer
+  # Carrying both payload images pushes the decompressed kernel past the 62 MiB
+  # between the default 0x80200000 and the first NPU carveout at 0x84000000,
+  # which U-Boot refuses ("Unable to allocate memory ... for loading OS"). Land
+  # above every reserved-memory region instead; the last ends at 0x90e067ff.
+  KERNEL_LOADADDR := 0x92000000
   DEVICE_PACKAGES += notengobattery-w1700k-installer
   IMAGES :=
   ARTIFACTS :=
