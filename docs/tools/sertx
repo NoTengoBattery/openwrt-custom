@@ -22,7 +22,9 @@ sleep "$wait"
 
 # Echo check: the console should have echoed the command back verbatim.
 new=$(tail -c +$((start+1)) "$L")
-if printf '%s' "$new" | tr -d '\r\n' | grep -qF "$(printf '%s' "$cmd" | tr -d ' ')"; then
+# Spaces are stripped from both sides: the console wraps at 64 columns, so a
+# long command comes back with a line break inside it.
+if printf '%s' "$new" | tr -d ' \r\n' | grep -qF "$(printf '%s' "$cmd" | tr -d ' ')"; then
   :
 else
   printf '!! ECHO MISMATCH - command may have been mangled, check below\n' >&2
