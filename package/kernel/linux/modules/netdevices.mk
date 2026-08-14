@@ -524,6 +524,24 @@ endef
 $(eval $(call KernelPackage,phy-realtek))
 
 
+define KernelPackage/phy-rtl8261ce
+   SUBMENU:=$(NETWORK_DEVICES_MENU)
+   TITLE:=Realtek RTL8261CE NBASE-T PHY driver
+   KCONFIG:=CONFIG_RTL8261CE_PHY
+   DEPENDS:=+kmod-libphy +kmod-hwmon-core
+   FILES:=$(LINUX_DIR)/drivers/net/phy/rtl8261ce/rtk-rtl8261ce-phy.ko
+   AUTOLOAD:=$(call AutoLoad,18,rtk-rtl8261ce-phy,1)
+endef
+
+define KernelPackage/phy-rtl8261ce/description
+   Supports the Realtek 8261CE NBASE-T PHY. Distinct silicon from the 8261N:
+   the polarity controls sit behind a vendor OCP window, not the 8261N global
+   HSI/HSO bits, and the part needs a firmware download at probe.
+endef
+
+$(eval $(call KernelPackage,phy-rtl8261ce))
+
+
 define KernelPackage/phy-rtl8261n
    SUBMENU:=$(NETWORK_DEVICES_MENU)
    TITLE:=Realtek RTL8261N NBASE-T PHY driver
