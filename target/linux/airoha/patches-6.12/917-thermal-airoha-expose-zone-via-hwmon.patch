@@ -1,0 +1,27 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] thermal: airoha: expose the thermal zone through hwmon
+
+DT-registered thermal zones no longer get a hwmon device implicitly;
+each driver must opt in. Mirror mediatek auxadc/lvts so lm-sensors can
+read the SoC temperature.
+
+--- a/drivers/thermal/airoha_thermal.c
++++ b/drivers/thermal/airoha_thermal.c
+@@ -11,6 +11,8 @@
+ #include <linux/regmap.h>
+ #include <linux/thermal.h>
+ 
++#include "thermal_hwmon.h"
++
+ /* SCU regs */
+ #define EN7581_PLLRG_PROTECT			0x268
+ #define EN7581_PWD_TADC				0x2ec
+@@ -689,6 +691,8 @@ static int airoha_thermal_probe(struct p
+ 		return PTR_ERR(priv->tz);
+ 	}
+ 
++	devm_thermal_add_hwmon_sysfs(dev, priv->tz);
++
+ 	platform_set_drvdata(pdev, priv);
+ 
+ 	return soc_data->post_probe ? soc_data->post_probe(pdev) : 0;
