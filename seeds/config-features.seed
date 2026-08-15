@@ -31,7 +31,9 @@ CONFIG_PACKAGE_kmod-usb-storage-uas=y
 CONFIG_PACKAGE_kmod-usb-storage=y
 
 # flower is how flows are steered into hardware offload (PPE on airoha);
-# every target with any offload engine wants it available.
+# every target with any offload engine wants it available. act-vlan is
+# its companion for tagged flows: hw push/pop on access<->trunk paths.
+CONFIG_PACKAGE_kmod-sched-act-vlan=y
 CONFIG_PACKAGE_kmod-sched-flower=y
 
 # Cellular modem suite. Baked in wherever there is USB support, which is
