@@ -1,0 +1,36 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] net: airoha: npu: retry rejected mailbox messages
+
+With the wifi offload firmware loaded the NPU intermittently NAKs
+mailbox messages (MBOX_MSG_STATUS != SUCCESS) while busy on the wifi
+cores; a single-shot send turns that into a hard failure of the whole
+PPE offload setup. SmartRG carries an equivalent retry in their tree.
+
+--- a/drivers/net/ethernet/airoha/airoha_npu.c
++++ b/drivers/net/ethernet/airoha/airoha_npu.c
+@@ -166,13 +166,14 @@ static int airoha_npu_send_msg(struct ai
+ 	u16 core = 0; /* FIXME */
+ 	u32 val, offset = core << 4;
+ 	dma_addr_t dma_addr;
+-	int ret;
++	int ret, retry = 3;
+
+ 	dma_addr = dma_map_single(npu->dev, p, size, DMA_TO_DEVICE);
+ 	ret = dma_mapping_error(npu->dev, dma_addr);
+ 	if (ret)
+ 		return ret;
+
++npu_send_msg_retry:
+ 	spin_lock_bh(&npu->cores[core].lock);
+
+ 	regmap_write(npu->regmap, REG_CR_MBQ0_CTRL(0) + offset, dma_addr);
+@@ -191,6 +192,9 @@ static int airoha_npu_send_msg(struct ai
+
+ 	spin_unlock_bh(&npu->cores[core].lock);
+
++	if (ret && --retry > 0)
++		goto npu_send_msg_retry;
++
+ 	dma_unmap_single(npu->dev, dma_addr, size, DMA_TO_DEVICE);
+
+ 	return ret;
