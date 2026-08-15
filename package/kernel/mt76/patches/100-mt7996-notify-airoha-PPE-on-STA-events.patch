@@ -1,0 +1,81 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] mt7996: notify the airoha PPE on STA association events
+
+The airoha PPE caches the WDMA wcid inside installed bridge flows. A
+STA reassociation changes the wcid without touching the FDB, so the
+cached copy goes stale and the flow blackholes. Forward STA
+assoc/authorize/disassoc events to airoha_ppe_dev so it can re-resolve
+its templates.
+
+Also restore wcid.sta/sta_disabled on ASSOC: a reassociation that
+never drops to NOTEXIST skips mt7996_mac_sta_init_link, so once
+DISASSOC clears wcid.sta, mt7996_net_fill_forward_path returns -EIO
+for that STA forever.
+
+--- a/mt76.h
++++ b/mt76.h
+@@ -1683,6 +1683,7 @@ int mt76_npu_net_setup_tc(struct ieee802
+ int mt76_npu_send_txrx_addr(struct mt76_dev *dev, int ifindex,
+ 			    u32 direction, u32 i_count_addr,
+ 			    u32 o_status_addr, u32 o_count_addr);
++void mt76_npu_sta_notify(struct mt76_dev *dev, const u8 *addr);
+ #else
+ static inline void mt76_npu_check_ppe(struct mt76_dev *dev,
+ 				      struct sk_buff *skb, u32 info)
+@@ -1748,6 +1749,10 @@ static inline int mt76_npu_send_txrx_add
+ {
+ 	return -EOPNOTSUPP;
+ }
++
++static inline void mt76_npu_sta_notify(struct mt76_dev *dev, const u8 *addr)
++{
++}
+ #endif /* CONFIG_MT76_NPU */
+ 
+ static inline bool mt76_npu_device_active(struct mt76_dev *dev)
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1405,6 +1405,10 @@ mt7996_mac_sta_event(struct mt7996_dev *
+ 				goto unlock;
+ 
+ 			msta_link->wcid.tx_info |= MT_WCID_TX_INFO_SET;
++			/* reassoc without NOTEXIST skips mt7996_mac_sta_init_link,
++			 * the only other place these are set */
++			msta_link->wcid.sta = 1;
++			msta_link->wcid.sta_disabled = 0;
+ 			break;
+ 		case MT76_STA_EVENT_AUTHORIZE:
+ 			err = mt7996_mcu_add_sta(dev, link_conf, link_sta,
+@@ -1434,6 +1438,10 @@ mt7996_mac_sta_event(struct mt7996_dev *
+ unlock:
+ 	mutex_unlock(&dev->mt76.mutex);
+ 
++	if (ev == MT76_STA_EVENT_ASSOC || ev == MT76_STA_EVENT_AUTHORIZE ||
++	    ev == MT76_STA_EVENT_DISASSOC)
++		mt76_npu_sta_notify(&dev->mt76, sta->addr);
++
+ 	return err;
+ }
+ 
+--- a/npu.c
++++ b/npu.c
+@@ -383,6 +383,19 @@ int mt76_npu_net_setup_tc(struct ieee802
+ }
+ EXPORT_SYMBOL_GPL(mt76_npu_net_setup_tc);
+ 
++/* PPE flow templates cache the wcid; STA events invalidate it. */
++void mt76_npu_sta_notify(struct mt76_dev *dev, const u8 *addr)
++{
++	struct airoha_ppe_dev *ppe_dev;
++
++	rcu_read_lock();
++	ppe_dev = rcu_dereference(dev->mmio.ppe_dev);
++	if (ppe_dev)
++		airoha_ppe_dev_sta_notify(ppe_dev, addr);
++	rcu_read_unlock();
++}
++EXPORT_SYMBOL_GPL(mt76_npu_sta_notify);
++
+ int mt76_npu_send_txrx_addr(struct mt76_dev *dev, int ifindex,
+ 			    u32 direction, u32 i_count_addr,
+ 			    u32 o_status_addr, u32 o_count_addr)
