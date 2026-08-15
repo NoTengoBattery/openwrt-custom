@@ -13,3 +13,8 @@ CONFIG_DEFAULT_HOSTNAME="AN7581"
 # as a module (kmod-hwmon-core) the bridge is unavailable. Mirrors filogic.
 CONFIG_HWMON=y
 CONFIG_THERMAL_HWMON=y
+
+# The MT7996 wifi NPU firmware NAKs the PPE stats-init mailbox message,
+# and the driver treats that as fatal for ALL hardware flow offload.
+# Stats off = flows bind without counters. Driver-supported degradation.
+# CONFIG_NET_AIROHA_FLOW_STATS is not set
