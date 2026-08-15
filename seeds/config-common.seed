@@ -8,6 +8,9 @@ CONFIG_TOOLCHAINOPTS=y
 CONFIG_VERSIONOPT=y
 
 CONFIG_BINUTILS_USE_VERSION_2_45=y
+# eBPF objects (bridger et al) compile with the builder image's clang
+# instead of a 40-minute in-tree LLVM build; the Dockerfile ships it.
+CONFIG_BPF_TOOLCHAIN_HOST=y
 CONFIG_CCACHE=y
 CONFIG_GCC_USE_GRAPHITE=y
 CONFIG_GCC_USE_VERSION_15=y

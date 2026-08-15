@@ -10,9 +10,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends --auto-remove \
-      adduser build-essential ca-certificates coreutils curl dropbear file \
-      flex gawk git-core libncurses5-dev libssl-dev libxml-parser-perl \
-      mercurial nano pigz python3-dev python3-setuptools quilt rsync \
+      adduser build-essential ca-certificates clang coreutils curl dropbear \
+      file flex gawk git-core libncurses5-dev libssl-dev libxml-parser-perl \
+      llvm mercurial nano pigz python3-dev python3-setuptools quilt rsync \
       subversion sudo swig unzip wget xsltproc zlib1g-dev zsh
   
 
