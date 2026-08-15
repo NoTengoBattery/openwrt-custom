@@ -8,3 +8,8 @@ CONFIG_CMDLINE=""
 # CONFIG_SND_SOC_AN7581 is not set
 
 CONFIG_DEFAULT_HOSTNAME="AN7581"
+
+# Built-in so THERMAL_HWMON can bridge the SoC thermal zone into lm-sensors;
+# as a module (kmod-hwmon-core) the bridge is unavailable. Mirrors filogic.
+CONFIG_HWMON=y
+CONFIG_THERMAL_HWMON=y
