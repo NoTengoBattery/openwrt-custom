@@ -30,6 +30,10 @@ CONFIG_PACKAGE_kmod-usb-storage-extras=y
 CONFIG_PACKAGE_kmod-usb-storage-uas=y
 CONFIG_PACKAGE_kmod-usb-storage=y
 
+# flower is how flows are steered into hardware offload (PPE on airoha);
+# every target with any offload engine wants it available.
+CONFIG_PACKAGE_kmod-sched-flower=y
+
 # Cellular modem suite. Baked in wherever there is USB support, which is
 # every target at the moment: the zbtlink is a CPE by design and is the
 # intended modem host, so this is not an optional extra.
