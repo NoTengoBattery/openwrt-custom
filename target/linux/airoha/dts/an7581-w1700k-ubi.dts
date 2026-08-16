@@ -26,6 +26,22 @@
 		stdout-path = "serial0:115200n8";
 	};
 
+	reserved-memory {
+		/* In the hole between the last SoC carveout (ends 0x90e067ff)
+		 * and the installer's 0x92000000 load address; top-of-RAM is
+		 * unsafe here because U-Boot relocates there with a UBI-sized
+		 * malloc pool.
+		 */
+		ramoops@91000000 {
+			compatible = "ramoops";
+			reg = <0x0 0x91000000 0x0 0x600000>;
+			console-size = <0x200000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
+
 	keys {
 		compatible = "gpio-keys";
 
