@@ -1,0 +1,289 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] net: airoha: refresh wlan flow templates on STA events
+
+A bridge-type (L2) flow caches the WDMA band/wcid resolved via
+dev_fill_forward_path() once, at rule install time, and
+airoha_ppe_foe_commit_subflow_entry() stamps that cached copy into
+every hw subflow. When a STA (re)associates, mt76 assigns a new wcid
+but nothing changes at the FDB level, so the rule owner (bridger, a
+static tc setup) never reinstalls the rule: from that point every new
+subflow binds against the dead wcid and blackholes. The observable
+symptom is TCP bursting for ~1s (sw path until the PPE binds) and then
+cutting, while ICMP - which never binds - keeps flowing.
+
+Add a sta_notify op to airoha_ppe_dev so the wlan driver can report
+STA events. The handler defers to a worker that re-resolves the wdma
+info for affected L2 flows (matched by destination MAC), rewrites the
+cached template (etype band/wcid, ib2 NBQ, ACTDP bss) and flushes
+their subflows so traffic re-binds against fresh data. The egress
+ifindex is recorded at install time to make re-resolution possible.
+
+When re-resolution fails (STA gone, or the driver cannot resolve it -
+mt7996 returns -EIO for a STA that reassociated without a full
+teardown), the template is marked stale and subflow commit is skipped
+entirely: the flow rides the CPU path, slow but correct, instead of
+binding against a template that is known to be wrong. The next
+successful resolve clears the mark and hw binding resumes.
+
+diff --color -ur a/drivers/net/ethernet/airoha/airoha_eth.h b/drivers/net/ethernet/airoha/airoha_eth.h
+--- a/drivers/net/ethernet/airoha/airoha_eth.h
++++ b/drivers/net/ethernet/airoha/airoha_eth.h
+@@ -490,6 +490,11 @@
+ 	struct rhash_head node;
+ 	unsigned long cookie;
+ 
++	/* egress dev at install time, to re-resolve the wlan template */
++	int ifindex;
++	/* wlan template failed re-resolution; don't bind subflows from it */
++	bool wlan_stale;
++
+ 	/* Must be last --ends in a flexible-array member. */
+ 	struct airoha_foe_entry data;
+ };
+@@ -574,6 +579,11 @@
+ 	struct hlist_head *foe_flow;
+ 	u16 *foe_check_time;
+ 
++	struct work_struct wlan_work;
++	struct list_head wlan_events;
++	/* protects wlan_events */
++	spinlock_t wlan_lock;
++
+ 	struct airoha_foe_stats *foe_stats;
+ 	dma_addr_t foe_stats_dma;
+ 
+diff --color -ur a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/airoha/airoha_ppe.c
+--- a/drivers/net/ethernet/airoha/airoha_ppe.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe.c
+@@ -800,6 +800,143 @@
+ 	spin_unlock_bh(&ppe_lock);
+ }
+ 
++struct airoha_ppe_wlan_event {
++	struct list_head list;
++	u8 addr[ETH_ALEN];
++};
++
++static bool
++airoha_ppe_foe_bridge_dest_match(struct airoha_flow_table_entry *e,
++				 const u8 *addr)
++{
++	return e->data.bridge.dest_mac_hi == get_unaligned_be32(addr) &&
++	       e->data.bridge.dest_mac_lo == get_unaligned_be16(addr + 4);
++}
++
++static bool airoha_ppe_foe_bridge_is_wlan(struct airoha_flow_table_entry *e)
++{
++	return FIELD_GET(AIROHA_FOE_IB2_PSE_PORT, e->data.bridge.ib2) ==
++	       FE_PSE_PORT_CDM4;
++}
++
++/* A wlan L2 flow caches the WDMA band/wcid resolved at rule install time
++ * and every hw subflow inherits that copy, but a STA (re)association can
++ * change the wcid with no FDB churn for the rule owner to react to: new
++ * subflows then bind to a dead wcid and blackhole. Re-resolve the cached
++ * template and flush the subflows so they re-bind against fresh data.
++ */
++static void airoha_ppe_wlan_refresh_addr(struct airoha_ppe *ppe,
++					 const u8 *addr)
++{
++	struct airoha_wdma_info info = {};
++	struct airoha_flow_table_entry *e;
++	struct rhashtable_iter hti;
++	struct net_device *dev;
++	bool resolved = false;
++	int ifindex = 0;
++
++	spin_lock_bh(&ppe_lock);
++	rhashtable_walk_enter(&ppe->l2_flows, &hti);
++	rhashtable_walk_start(&hti);
++	while ((e = rhashtable_walk_next(&hti)) != NULL) {
++		if (IS_ERR(e))
++			continue;
++
++		if (airoha_ppe_foe_bridge_is_wlan(e) &&
++		    airoha_ppe_foe_bridge_dest_match(e, addr) && e->ifindex) {
++			ifindex = e->ifindex;
++			break;
++		}
++	}
++	rhashtable_walk_stop(&hti);
++	rhashtable_walk_exit(&hti);
++	spin_unlock_bh(&ppe_lock);
++
++	if (!ifindex)
++		return;
++
++	rcu_read_lock();
++	dev = dev_get_by_index_rcu(&init_net, ifindex);
++	if (dev)
++		resolved = !airoha_ppe_get_wdma_info(dev, addr, &info);
++	rcu_read_unlock();
++
++	spin_lock_bh(&ppe_lock);
++	rhashtable_walk_enter(&ppe->l2_flows, &hti);
++	rhashtable_walk_start(&hti);
++	while ((e = rhashtable_walk_next(&hti)) != NULL) {
++		struct airoha_flow_table_entry *iter;
++		struct hlist_node *n;
++
++		if (IS_ERR(e))
++			continue;
++
++		if (!airoha_ppe_foe_bridge_is_wlan(e) ||
++		    !airoha_ppe_foe_bridge_dest_match(e, addr))
++			continue;
++
++		hlist_for_each_entry_safe(iter, n, &e->l2_flows,
++					  l2_subflow_node)
++			airoha_ppe_foe_remove_flow(ppe, iter);
++
++		if (resolved && e->ifindex == ifindex) {
++			e->data.bridge.l2.common.etype =
++				FIELD_PREP(AIROHA_FOE_MAC_WDMA_BAND,
++					   info.idx) |
++				FIELD_PREP(AIROHA_FOE_MAC_WDMA_WCID,
++					   info.wcid);
++			e->data.bridge.ib2 &= ~AIROHA_FOE_IB2_NBQ;
++			e->data.bridge.ib2 |= FIELD_PREP(AIROHA_FOE_IB2_NBQ,
++							 info.idx);
++			e->data.bridge.data &= ~AIROHA_FOE_ACTDP;
++			e->data.bridge.data |= FIELD_PREP(AIROHA_FOE_ACTDP,
++							  info.bss);
++			e->wlan_stale = false;
++		} else {
++			e->wlan_stale = true;
++		}
++	}
++	rhashtable_walk_stop(&hti);
++	rhashtable_walk_exit(&hti);
++	spin_unlock_bh(&ppe_lock);
++}
++
++static void airoha_ppe_wlan_event_work(struct work_struct *work)
++{
++	struct airoha_ppe *ppe = container_of(work, struct airoha_ppe,
++					      wlan_work);
++	struct airoha_ppe_wlan_event *ev, *tmp;
++	LIST_HEAD(list);
++
++	spin_lock_bh(&ppe->wlan_lock);
++	list_splice_init(&ppe->wlan_events, &list);
++	spin_unlock_bh(&ppe->wlan_lock);
++
++	list_for_each_entry_safe(ev, tmp, &list, list) {
++		airoha_ppe_wlan_refresh_addr(ppe, ev->addr);
++		list_del(&ev->list);
++		kfree(ev);
++	}
++}
++
++static void airoha_ppe_sta_notify(struct airoha_ppe_dev *dev, const u8 *addr)
++{
++	struct airoha_ppe *ppe = dev->priv;
++	struct airoha_ppe_wlan_event *ev;
++
++	ev = kzalloc(sizeof(*ev), GFP_ATOMIC);
++	if (!ev)
++		return;
++
++	ether_addr_copy(ev->addr, addr);
++
++	spin_lock_bh(&ppe->wlan_lock);
++	list_add_tail(&ev->list, &ppe->wlan_events);
++	spin_unlock_bh(&ppe->wlan_lock);
++
++	schedule_work(&ppe->wlan_work);
++}
++
+ static int
+ airoha_ppe_foe_commit_subflow_entry(struct airoha_ppe *ppe,
+ 				    struct airoha_flow_table_entry *e,
+@@ -810,6 +947,12 @@
+ 	struct airoha_flow_table_entry *f;
+ 	int type;
+ 
++	/* binding against a stale wlan template blackholes the flow; let it
++	 * ride the CPU path until a STA event re-resolves the template
++	 */
++	if (e->wlan_stale)
++		return 0;
++
+ 	hwe_p = airoha_ppe_foe_get_entry_locked(ppe, hash);
+ 	if (!hwe_p)
+ 		return -EINVAL;
+@@ -1214,6 +1357,7 @@
+ 		return -ENOMEM;
+ 
+ 	e->cookie = f->cookie;
++	e->ifindex = odev ? odev->ifindex : 0;
+ 	memcpy(&e->data, &hwe, sizeof(e->data));
+ 
+ 	err = airoha_ppe_foe_flow_commit_entry(eth->ppe, e);
+@@ -1556,10 +1700,15 @@
+ 
+ 	ppe->dev.ops.setup_tc_block_cb = airoha_ppe_setup_tc_block_cb;
+ 	ppe->dev.ops.check_skb = airoha_ppe_check_skb;
++	ppe->dev.ops.sta_notify = airoha_ppe_sta_notify;
+ 	ppe->dev.priv = ppe;
+ 	ppe->eth = eth;
+ 	eth->ppe = ppe;
+ 
++	INIT_WORK(&ppe->wlan_work, airoha_ppe_wlan_event_work);
++	INIT_LIST_HEAD(&ppe->wlan_events);
++	spin_lock_init(&ppe->wlan_lock);
++
+ 	ppe_num_entries = airoha_ppe_get_total_num_entries(ppe);
+ 	foe_size = ppe_num_entries * sizeof(struct airoha_foe_entry);
+ 	ppe->foe = dmam_alloc_coherent(eth->dev, foe_size, &ppe->foe_dma,
+@@ -1617,8 +1766,13 @@
+ 
+ void airoha_ppe_deinit(struct airoha_eth *eth)
+ {
++	struct airoha_ppe_wlan_event *ev, *tmp;
+ 	struct airoha_npu *npu;
+ 
++	cancel_work_sync(&eth->ppe->wlan_work);
++	list_for_each_entry_safe(ev, tmp, &eth->ppe->wlan_events, list)
++		kfree(ev);
++
+ 	mutex_lock(&flow_offload_mutex);
+ 
+ 	npu = rcu_replace_pointer(eth->npu, NULL,
+diff --color -ur a/include/linux/soc/airoha/airoha_offload.h b/include/linux/soc/airoha/airoha_offload.h
+--- a/include/linux/soc/airoha/airoha_offload.h
++++ b/include/linux/soc/airoha/airoha_offload.h
+@@ -21,6 +21,8 @@
+ 		void (*check_skb)(struct airoha_ppe_dev *dev,
+ 				  struct sk_buff *skb, u16 hash,
+ 				  bool rx_wlan);
++		void (*sta_notify)(struct airoha_ppe_dev *dev,
++				   const u8 *addr);
+ 	} ops;
+ 
+ 	void *priv;
+@@ -42,6 +44,12 @@
+ {
+ 	dev->ops.check_skb(dev, skb, hash, rx_wlan);
+ }
++
++static inline void airoha_ppe_dev_sta_notify(struct airoha_ppe_dev *dev,
++					     const u8 *addr)
++{
++	dev->ops.sta_notify(dev, addr);
++}
+ #else
+ static inline struct airoha_ppe_dev *airoha_ppe_get_dev(struct device *dev)
+ {
+@@ -63,6 +71,11 @@
+ 					    bool rx_wlan)
+ {
+ }
++
++static inline void airoha_ppe_dev_sta_notify(struct airoha_ppe_dev *dev,
++					     const u8 *addr)
++{
++}
+ #endif
+ 
+ #define NPU_NUM_CORES		8
