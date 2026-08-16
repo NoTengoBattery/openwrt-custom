@@ -61,10 +61,10 @@ CONFIG_PACKAGE_dnsmasq-full=y
 CONFIG_PACKAGE_earlyoom=y
 CONFIG_PACKAGE_ethtool-full=y
 CONFIG_PACKAGE_gkermit=y
-CONFIG_PACKAGE_lm-sensors=y
 CONFIG_PACKAGE_lsattr=y
 CONFIG_PACKAGE_minicom=y
 CONFIG_PACKAGE_pv=y
+CONFIG_PACKAGE_tcpdump=y
 
 # mwan3 and its LuCI app are pinned forks that build_me.pl rsyncs over
 # feeds/packages on every run, so they are build-wide by construction.

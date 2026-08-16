@@ -16,9 +16,12 @@ CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi=y
 # the payload has been copied, so what ships differs from what is embedded.
 
 # Packages for every specific AN7581
-# (none: the W1700K's PHY, fan, NPU and wifi firmware, and the SoC status
-#  LuCI app are per-device and live in Device/gemtek_w1700k-ubi
+# (hardware enablement — PHY, fan, NPU and wifi firmware, SoC status LuCI
+#  app — is per-device and lives in Device/gemtek_w1700k-ubi
 #  DEVICE_PACKAGES in image/an7581.mk)
+# python3: on-device diagnostic scripting (PPE/wifi monitors) has to
+# survive the slim variant on the deployed APs.
+CONFIG_TARGET_DEVICE_PACKAGES_airoha_an7581_DEVICE_gemtek_w1700k-ubi="python3"
 
 # luci-app-airoha-npu reads NPU/FE registers through /dev/mem; its busybox
 # devmem applet is pinned cross-target in config-features.seed.

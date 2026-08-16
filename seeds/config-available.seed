@@ -10,6 +10,11 @@ CONFIG_PACKAGE_6rd=m
 CONFIG_PACKAGE_libopenssl-afalg=m
 CONFIG_PACKAGE_libopenssl-afalg_sync=m
 CONFIG_PACKAGE_libopenssl-devcrypto=m
+# Companion to the lm-sensors in notengobattery-defaults. Cannot ride that
+# DEPENDS: its self-conditional perl deps propagate a PACKAGE_lm-sensors-detect
+# guard into every selector, which kconfig flags as recursive (it silently
+# deselected notengobattery-scripts). packages-full.seed promotes it to =y.
+CONFIG_PACKAGE_lm-sensors-detect=m
 CONFIG_PACKAGE_luci-app-advanced-reboot=m
 CONFIG_PACKAGE_luci-app-nlbwmon=m
 CONFIG_PACKAGE_luci-app-samba4=m
