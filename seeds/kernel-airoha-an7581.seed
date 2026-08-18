@@ -14,7 +14,9 @@ CONFIG_DEFAULT_HOSTNAME="AN7581"
 CONFIG_HWMON=y
 CONFIG_THERMAL_HWMON=y
 
-# The MT7996 wifi NPU firmware NAKs the PPE stats-init mailbox message,
-# and the driver treats that as fatal for ALL hardware flow offload.
-# Stats off = flows bind without counters. Driver-supported degradation.
-# CONFIG_NET_AIROHA_FLOW_STATS is not set
+# The MT7996 wifi NPU firmware NAKed the PPE stats-init mailbox message
+# at bring-up, and stock code treats that as fatal for ALL hardware flow
+# offload. Local patch 921 degrades it to a logged warning, so stats can
+# stay enabled: counters light up whenever the firmware supports the op,
+# and hw-stats consumers (bridger's 30s idle teardown) stop churning.
+CONFIG_NET_AIROHA_FLOW_STATS=y

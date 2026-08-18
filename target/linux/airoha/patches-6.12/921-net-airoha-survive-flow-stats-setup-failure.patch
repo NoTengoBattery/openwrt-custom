@@ -1,0 +1,87 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] net: airoha: survive PPE flow stats setup failure
+
+airoha_ppe_offload_setup() treats a failure of the FLOW_STATS_SETUP
+NPU mailbox op as fatal: the NPU is released and ALL hardware offload
+is lost, silently — nothing is logged anywhere on this path. NPU
+firmware builds exist that do not implement the op (the wifi-flavored
+en7581 firmware among the suspects), so on those devices enabling
+CONFIG_NET_AIROHA_FLOW_STATS (default y!) quietly disables the PPE
+entirely, and the only way to discover why is bisecting kernel
+configs.
+
+Degrade instead of dying: log the errno and continue without hw flow
+counters. npu->stats stays NULL in that case, so gate every consumer
+on it — the per-index reset (NULL memset_io at attach), the flow
+stats update (marks FOE entries for counting that no firmware
+maintains), and the FLOW_CLS_STATS reader. Also reject a zero stats
+address returned by firmware that acks the op without implementing
+it, instead of ioremapping physical 0.
+
+With stats functional, tc FLOW_CLS_STATS reports real per-flow
+hw counters; without them, offload userspace that polls counters
+(e.g. bridger) sees permanently-idle flows and tears down and
+reinstalls every offloaded flow on its idle timeout, so the
+distinction matters operationally in both directions.
+
+---
+--- a/drivers/net/ethernet/airoha/airoha_npu.c
++++ b/drivers/net/ethernet/airoha/airoha_npu.c
+@@ -451,6 +451,11 @@
+ 	if (err)
+ 		goto out;
+ 
++	if (!ppe_data->stats_info.npu_stats_addr) {
++		err = -ENODATA;
++		goto out;
++	}
++
+ 	npu->stats = devm_ioremap(npu->dev,
+ 				  ppe_data->stats_info.npu_stats_addr,
+ 				  size);
+--- a/drivers/net/ethernet/airoha/airoha_ppe.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe.c
+@@ -563,6 +563,9 @@
+ 						 struct airoha_npu *npu,
+ 						 int index)
+ {
++	if (!npu->stats)
++		return;
++
+ 	memset_io(&npu->stats[index], 0, sizeof(*npu->stats));
+ 	memset(&ppe->foe_stats[index], 0, sizeof(*ppe->foe_stats));
+ }
+@@ -590,6 +593,9 @@
+ 	int ppe_num_stats_entries;
+ 	u8 nbq;
+ 
++	if (!npu->stats)
++		return;
++
+ 	ppe_num_stats_entries = airoha_ppe_get_total_num_stats_entries(ppe);
+ 	if (ppe_num_stats_entries < 0)
+ 		return;
+@@ -1418,7 +1424,7 @@
+ 	rcu_read_lock();
+ 
+ 	npu = rcu_dereference(eth->npu);
+-	if (npu) {
++	if (npu && npu->stats) {
+ 		u64 packets = ppe->foe_stats[index].packets;
+ 		u64 bytes = ppe->foe_stats[index].bytes;
+ 		struct airoha_foe_stats npu_stats;
+@@ -1550,8 +1556,13 @@
+ 	if (ppe_num_stats_entries > 0) {
+ 		err = npu->ops.ppe_init_stats(npu, ppe->foe_stats_dma,
+ 					      ppe_num_stats_entries);
++		/* some NPU firmware builds do not implement the stats setup
++		 * op; run without hw flow counters instead of losing offload
++		 */
+ 		if (err)
+-			goto error_npu_put;
++			dev_warn(eth->dev,
++				 "PPE flow stats setup failed (%d), continuing without hw flow counters\n",
++				 err);
+ 	}
+ 
+ 	airoha_ppe_hw_init(ppe);
