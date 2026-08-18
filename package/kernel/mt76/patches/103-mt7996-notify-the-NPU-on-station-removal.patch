@@ -1,0 +1,85 @@
+From: Ryan Chen <rchen14b@gmail.com>
+Subject: [PATCH] mt7996: notify the NPU on station removal
+
+The NPU keeps per-station offload state and is never told when a
+station disconnects, so the entry outlives the client. A client that
+comes back is given a different wcid while the stale entry still
+steers traffic at the old one; the reported symptom is a reconnected
+client stuck at roughly 1 Mbps until it is forced onto a fresh MAC
+address.
+
+Send WLAN_FUNC_SET_WAIT_DEL_STA from the station teardown path.
+
+Signed-off-by: Ryan Chen <rchen14b@gmail.com>
+[oever: rebased onto mt7996_mac_sta_remove_link, and moved the call
+ ahead of the wcid.link_valid block: link_valid is derived from
+ sta->valid_links, so it is set for MLO stations only and a legacy
+ client would never have been announced. Report a firmware refusal
+ once instead of dropping the return code -- this firmware answers
+ -EINVAL to mailbox ops it does not implement. Description reworded;
+ the diagnosis and the fix are his.]
+Signed-off-by: Oever Gonzalez <software@notengobattery.com>
+
+--- a/mt76.h
++++ b/mt76.h
+@@ -1684,6 +1684,7 @@ int mt76_npu_send_txrx_addr(struct mt76_
+ 			    u32 direction, u32 i_count_addr,
+ 			    u32 o_status_addr, u32 o_count_addr);
+ void mt76_npu_sta_notify(struct mt76_dev *dev, const u8 *addr);
++void mt76_npu_del_sta(struct mt76_dev *dev, int band_idx, u16 wcid_idx);
+ #else
+ static inline void mt76_npu_check_ppe(struct mt76_dev *dev,
+ 				      struct sk_buff *skb, u32 info)
+@@ -1753,6 +1754,11 @@ static inline int mt76_npu_send_txrx_add
+ static inline void mt76_npu_sta_notify(struct mt76_dev *dev, const u8 *addr)
+ {
+ }
++
++static inline void mt76_npu_del_sta(struct mt76_dev *dev, int band_idx,
++				    u16 wcid_idx)
++{
++}
+ #endif /* CONFIG_MT76_NPU */
+ 
+ static inline bool mt76_npu_device_active(struct mt76_dev *dev)
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1205,6 +1205,9 @@ void mt7996_mac_sta_remove_link(struct m
+ 
+ 	mt76_wcid_cleanup(&dev->mt76, &msta_link->wcid);
+ 
++	mt76_npu_del_sta(&dev->mt76, msta_link->wcid.phy_idx,
++			 msta_link->wcid.idx);
++
+ 	if (msta_link->wcid.link_valid) {
+ 		mt7996_mac_wtbl_update(dev, msta_link->wcid.idx,
+ 				       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
+--- a/npu.c
++++ b/npu.c
+@@ -406,6 +406,26 @@ void mt76_npu_sta_notify(struct mt76_dev
+ }
+ EXPORT_SYMBOL_GPL(mt76_npu_sta_notify);
+ 
++/* Firmware tracks stations by wcid and is never told one left. */
++void mt76_npu_del_sta(struct mt76_dev *dev, int band_idx, u16 wcid_idx)
++{
++	struct airoha_npu *npu;
++	int err = 0;
++
++	rcu_read_lock();
++	npu = rcu_dereference(dev->mmio.npu);
++	if (npu)
++		err = mt76_npu_send_msg(npu, band_idx,
++					WLAN_FUNC_SET_WAIT_DEL_STA, wcid_idx,
++					GFP_ATOMIC);
++	rcu_read_unlock();
++
++	if (err)
++		dev_warn_once(dev->dev,
++			      "NPU refused the station removal (%d)\n", err);
++}
++EXPORT_SYMBOL_GPL(mt76_npu_del_sta);
++
+ int mt76_npu_send_txrx_addr(struct mt76_dev *dev, int ifindex,
+ 			    u32 direction, u32 i_count_addr,
+ 			    u32 o_status_addr, u32 o_count_addr)
