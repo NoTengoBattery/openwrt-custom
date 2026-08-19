@@ -8,8 +8,11 @@ CONFIG_KERNEL_CFLAGS="-pipe -march=armv8-a -mtune=cortex-a53"
 CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_hiveton_h5000m=y
 
 # Packages for every specific Filogic
-# (none: the H5000M fan controller is a per-device package and lives in
+# (the H5000M fan controller is a per-device package and lives in
 #  Device/hiveton_h5000m DEVICE_PACKAGES in image/filogic.mk)
+# python3: the fleet health sampler is a Python script, so every AP needs an
+# interpreter regardless of the slim variant. Matches the W1700K.
+CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_hiveton_h5000m="python3"
 
 # The wireless stack and mwan3 are declared at family and cross-target
 # scope respectively; see target-mediatek.seed and config-features.seed.
