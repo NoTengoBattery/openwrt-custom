@@ -13,10 +13,14 @@ CONFIG_PACKAGE_libopenssl-devcrypto=m
 # Its self-conditional perl deps make a DEPENDS on this recursive to kconfig
 # (silently deselects the depending package). packages-full.seed -> =y.
 CONFIG_PACKAGE_lm-sensors-detect=m
+# Load-bearing for the ipq40xx Linksys DEVICE_PACKAGES lines (dual-partition).
 CONFIG_PACKAGE_luci-app-advanced-reboot=m
 CONFIG_PACKAGE_luci-app-nlbwmon=m
 CONFIG_PACKAGE_luci-app-samba4=m
 CONFIG_PACKAGE_minidlna=m
+# =m only publishes it; the DEVICE_PACKAGES lines in the target seeds bake it
+# into the AP rootfs — without this line those lines silently resolve to nothing.
+CONFIG_PACKAGE_python3=m
 
 # notengobattery-defaults already stages its config, so this just works.
 CONFIG_PACKAGE_unbound-daemon=m

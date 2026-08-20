@@ -64,6 +64,15 @@ Two buckets sit outside the stack and outrank everything, because
 
 ## Gotchas
 
+- **A `TARGET_DEVICE_PACKAGES` string never builds anything.** image.mk resolves
+  those names at image-assembly time against packages already compiled. A name
+  with no `CONFIG_PACKAGE_<name>=m`/`=y` anywhere fails `apk add` on a clean
+  tree — but `bin/packages/` survives target switches, so a leftover apk from
+  an earlier target or config masks the gap indefinitely (python3 rode that for
+  days). Every package named in a per-device string must also be selected in a
+  seed, normally `config-available.seed` `=m`. The `.manifest` in bin/targets
+  lists only the default rootfs, so it cannot confirm per-device packages;
+  check the image or `build_dir/.../target-dir-*`.
 - **Device symbols depend on multi-profile mode.** With
   `CONFIG_TARGET_MULTI_PROFILE=y`, devices are selected as
   `CONFIG_TARGET_DEVICE_<target>_<subtarget>_DEVICE_<name>=y`, and per-device
