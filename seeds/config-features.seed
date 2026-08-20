@@ -18,11 +18,8 @@ CONFIG_PACKAGE_kmod-nf-socket=y
 CONFIG_PACKAGE_kmod-nf-tproxy=y
 CONFIG_PACKAGE_kmod-veth=y
 
-# USB block storage, with the filesystems needed to actually mount it.
-# vfat and ext4 are baked in because an image that can enumerate a stick
-# but mount nothing is useless; the remaining filesystems and the repair
-# tools live in packages-full.seed. exfat arrives via the
-# notengobattery-defaults DEPENDS.
+# USB block storage; vfat/ext4 baked in, the rest in packages-full.seed.
+# exfat arrives via the notengobattery-defaults DEPENDS.
 CONFIG_PACKAGE_dosfstools=y
 CONFIG_PACKAGE_kmod-fs-ext4=y
 CONFIG_PACKAGE_kmod-fs-vfat=y
@@ -30,18 +27,13 @@ CONFIG_PACKAGE_kmod-usb-storage-extras=y
 CONFIG_PACKAGE_kmod-usb-storage-uas=y
 CONFIG_PACKAGE_kmod-usb-storage=y
 
-# flower is how flows are steered into hardware offload (PPE on airoha);
-# every target with any offload engine wants it available. act-vlan is
-# its companion for tagged flows: hw push/pop on access<->trunk paths.
-# bridger turns it all automatic: FDB-snooped per-MAC-pair rules with
-# VLAN transforms and an eBPF software fallback (pulls kmod-sched-bpf).
+# flower + act-vlan feed hardware offload (PPE on airoha); bridger
+# automates FDB-snooped rules on top, with an eBPF fallback.
 CONFIG_PACKAGE_bridger=y
 CONFIG_PACKAGE_kmod-sched-act-vlan=y
 CONFIG_PACKAGE_kmod-sched-flower=y
 
-# Cellular modem suite. Baked in wherever there is USB support, which is
-# every target at the moment: the zbtlink is a CPE by design and is the
-# intended modem host, so this is not an optional extra.
+# Cellular modem suite — the zbtlink is a CPE host, not optional.
 CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y
 CONFIG_PACKAGE_kmod-usb-net-ipheth=y
 CONFIG_PACKAGE_kmod-usb-net=y
@@ -66,16 +58,14 @@ CONFIG_PACKAGE_minicom=y
 CONFIG_PACKAGE_pv=y
 CONFIG_PACKAGE_tcpdump=y
 
-# mwan3 and its LuCI app are pinned forks that build_me.pl rsyncs over
-# feeds/packages on every run, so they are build-wide by construction.
+# Pinned mwan3 forks; build_me.pl rsyncs them over feeds/packages.
 CONFIG_PACKAGE_luci-app-mwan3=y
 
 CONFIG_BUSYBOX_CONFIG_BLKDISCARD=y
 CONFIG_BUSYBOX_CONFIG_BLOCKDEV=y
 CONFIG_BUSYBOX_CONFIG_CHRT=y
-# devmem is used by luci-app-airoha-npu, which is vendored and so cannot
-# carry its own +@BUSYBOX_CONFIG_DEVMEM. Needs CONFIG_KERNEL_DEVMEM too,
-# which is per-target and lives in target-airoha-an7581.seed.
+# luci-app-airoha-npu is vendored and can't DEPENDS on this; also needs
+# CONFIG_KERNEL_DEVMEM (target-airoha-an7581.seed).
 CONFIG_BUSYBOX_CONFIG_DEVMEM=y
 CONFIG_BUSYBOX_CONFIG_FDISK=y
 CONFIG_BUSYBOX_CONFIG_FEATURE_BLKID_TYPE=y
@@ -124,9 +114,7 @@ CONFIG_BUSYBOX_CONFIG_FEATURE_VOLUMEID_UBIFS=y
 CONFIG_BUSYBOX_CONFIG_FEATURE_VOLUMEID_XFS=y
 CONFIG_BUSYBOX_CONFIG_FSTRIM=y
 CONFIG_BUSYBOX_CONFIG_HDPARM=y
-# hexdump is used by luci-app-h5000m-fancontrol, which is vendored and so
-# cannot carry its own +@BUSYBOX_CONFIG_HEXDUMP. Pinned here instead of
-# relying on BUSYBOX_DEFAULT_HEXDUMP staying y upstream.
+# luci-app-h5000m-fancontrol is vendored and can't DEPENDS on this.
 CONFIG_BUSYBOX_CONFIG_HEXDUMP=y
 CONFIG_BUSYBOX_CONFIG_HEXEDIT=y
 CONFIG_BUSYBOX_CONFIG_IONICE=y

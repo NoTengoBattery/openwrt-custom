@@ -7,7 +7,6 @@ CONFIG_VERSION_MANUFACTURER_URL="https://www.airoha.com/"
 CONFIG_VERSION_MANUFACTURER="Airoha"
 CONFIG_VERSION_PRODUCT="Airoha"
 
-# Wireless stack for this SoC family. Unlike mediatek and ramips, nothing in
-# airoha's DEFAULT_PACKAGES ships a wpad variant, so there is no =n to undo.
+# Unlike mediatek/ramips, airoha's DEFAULT_PACKAGES ships no wpad to undo.
 CONFIG_PACKAGE_luci-app-usteer=y
 CONFIG_PACKAGE_wpad-mbedtls=y

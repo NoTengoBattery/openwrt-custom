@@ -2,21 +2,15 @@
 
 CONFIG_CMDLINE=""
 
-# No AN7581 board built here has an audio codec, and the afe node is disabled
-# in an7581.dtsi. Leaving this on exposes SND_SOC_AN7581_WM8960 (depends on
-# I2C) only once a kmod enables I2C, which is after kernel_oldconfig has run.
+# Depends on I2C, which is only enabled by a kmod after kernel_oldconfig runs.
 # CONFIG_SND_SOC_AN7581 is not set
 
 CONFIG_DEFAULT_HOSTNAME="AN7581"
 
-# Built-in so THERMAL_HWMON can bridge the SoC thermal zone into lm-sensors;
-# as a module (kmod-hwmon-core) the bridge is unavailable. Mirrors filogic.
+# Built-in: as a module, THERMAL_HWMON can't bridge the zone into lm-sensors.
 CONFIG_HWMON=y
 CONFIG_THERMAL_HWMON=y
 
-# The MT7996 wifi NPU firmware NAKed the PPE stats-init mailbox message
-# at bring-up, and stock code treats that as fatal for ALL hardware flow
-# offload. Local patch 921 degrades it to a logged warning, so stats can
-# stay enabled: counters light up whenever the firmware supports the op,
-# and hw-stats consumers (bridger's 30s idle teardown) stop churning.
+# Safe despite the NPU firmware refusing the op: patch 921 degrades that
+# refusal to a warning instead of failing all hardware offload.
 CONFIG_NET_AIROHA_FLOW_STATS=y

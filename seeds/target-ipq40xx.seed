@@ -9,10 +9,8 @@ CONFIG_VERSION_MANUFACTURER_URL="https://www.qualcomm.com/"
 CONFIG_VERSION_MANUFACTURER="Qualcomm"
 CONFIG_VERSION_PRODUCT="IPQ40xx"
 
-# Wireless stack for this SoC family. target/linux/ipq40xx/Makefile ships
-# wpad-basic-mbedtls in DEFAULT_PACKAGES, so it needs an explicit opt-out.
-# This family previously ran on the basic supplicant, i.e. without
-# WPA-Enterprise or 802.11r; watch the mikrotik image size (16 MB flash).
+# target/linux/ipq40xx/Makefile ships wpad-basic-mbedtls; opt out explicitly.
+# Watch the mikrotik image size (16 MB flash) if this grows.
 CONFIG_PACKAGE_luci-app-usteer=y
 CONFIG_PACKAGE_wpad-basic-mbedtls=n
 CONFIG_PACKAGE_wpad-mbedtls=y

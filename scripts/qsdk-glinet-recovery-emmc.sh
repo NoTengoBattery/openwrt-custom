@@ -59,7 +59,7 @@ sed -i \
     -e "s/__ROOTFS_DATA_BLKCNT__/${ROOTFS_DATA_BLKCNT}/g" \
     "${TMPDIR}/script.uboot"
 
-# Preprocess script file. This is a U-Boot script embedded in the FIT image that the bootloader will execute while flashing the image.
+# Minify into one semicolon-joined line for the embedded U-Boot script.
 SCRIPT_NAME=$(basename ${SCRIPT})
 python3 -c '
 import re, sys
@@ -67,8 +67,7 @@ import re, sys
 with open(sys.argv[1]) as src, open(sys.argv[2], "w") as dst:
 	file = ""
 	for line in src:
-		# Remove comments only outside of quoted strings
-		result = ""
+		result = ""  # dropped if outside quoted strings
 		in_single = False
 		in_double = False
 		i = 0
@@ -87,23 +86,23 @@ with open(sys.argv[1]) as src, open(sys.argv[2], "w") as dst:
 			result += c
 			i += 1
 		line = result
-		line = re.sub(r"\s+", " ", line)       # Convert multiple spaces to single space
-		line = line.strip()                    # Remove leading/trailing spaces
-		line = re.sub(r"\s*;\s*", ";", line)   # Remove spaces around semicolons
-		line = re.sub(r"\s*&&\s*", "&&", line) # Remove spaces around &&
-		line = re.sub(r"\s*\|\|\s*", "||", line) # Remove spaces around ||
-		line = line + ";"                      # Add semicolon at the end of the line
+		line = re.sub(r"\s+", " ", line)
+		line = line.strip()
+		line = re.sub(r"\s*;\s*", ";", line)
+		line = re.sub(r"\s*&&\s*", "&&", line)
+		line = re.sub(r"\s*\|\|\s*", "||", line)
+		line = line + ";"
 
 		file += line
-	file = re.sub(r"\s+", " ", file)       # Convert multiple spaces to single space
-	file = re.sub(r";+", ";", file)        # Remove multiple semicolons
-	file = re.sub(r"^;+|;+$", "", file)    # Remove leading/trailing semicolons
-	file = re.sub(r"\s*;\s*", ";", file)   # Remove spaces around semicolons
-	file = file.strip()                    # Remove leading/trailing spaces
+	file = re.sub(r"\s+", " ", file)
+	file = re.sub(r";+", ";", file)
+	file = re.sub(r"^;+|;+$", "", file)
+	file = re.sub(r"\s*;\s*", ";", file)
+	file = file.strip()
 	dst.write(file)
 ' "${TMPDIR}/script.uboot" "${TMPDIR}/script.tmp"
 
-# Preprocess the metadata. Since writing the metadata to a file is pointless, it is stored in a variable.
+# Metadata goes straight into a variable -- no file needed.
 echo "${METADATA}" |\
  python3 -c 'import json, sys; print(json.dumps(json.load(sys.stdin)))' > ${TMPDIR}/metadata.tmp
 
@@ -113,13 +112,12 @@ ROOTFS_DATA_HEX="de ad c0 de"
 ROOTFS_DATA_PAD=$(yes "00" | head -n 508 | xargs)
 GPT_HEX=$(hexdump -v -e '1/1 "%02x "' ${TMPDIR}/gpt.bin | xargs)
 
-# Other variables needed
 HLOS_NAME=$(basename ${HLOS})
 ROOTFS_NAME=$(basename ${ROOTFS})
 
 
 
-# Create the FIT image tree source file (as decompiled from an OEM firmware)
+# FIT tree mirrors the OEM firmware's exact structure.
 cat> ${OUTPUT} << EOI
 /dts-v1/;
 

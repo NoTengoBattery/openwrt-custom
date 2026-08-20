@@ -8,8 +8,7 @@ CONFIG_TOOLCHAINOPTS=y
 CONFIG_VERSIONOPT=y
 
 CONFIG_BINUTILS_USE_VERSION_2_45=y
-# eBPF objects (bridger et al) compile with the builder image's clang
-# instead of a 40-minute in-tree LLVM build; the Dockerfile ships it.
+# Builder image's clang builds eBPF objects; skips a 40-min in-tree LLVM build.
 CONFIG_BPF_TOOLCHAIN_HOST=y
 CONFIG_CCACHE=y
 CONFIG_GCC_USE_GRAPHITE=y
@@ -21,15 +20,12 @@ CONFIG_USE_MOLD=y
 CONFIG_TARGET_INITRAMFS_COMPRESSION_ZSTD=y
 CONFIG_TARGET_ROOTFS_TARGZ=y
 
-# Only exists under TARGET_MULTI_PROFILE, so this is inert on x86-64,
-# which builds single-profile (see target-x86-64.seed). Not a bug.
+# Inert on x86-64 (single-profile, see target-x86-64.seed) -- not a bug.
 CONFIG_TARGET_PER_DEVICE_ROOTFS=y
 
 # Common packages to build/install
 CONFIG_PACKAGE_notengobattery-defaults=y
 CONFIG_PACKAGE_notengobattery-preboot=y
 CONFIG_PACKAGE_notengobattery-scripts=y
-# Not a typo: shadow-all is a real kconfig symbol inside
-# Package/shadow-utils/config, not a package. Opts out of the whole PLD
-# suite so only the shadow-* applets in notengobattery-defaults get built.
+# Not a typo: kconfig symbol in Package/shadow-utils/config, not a package.
 CONFIG_shadow-all=n

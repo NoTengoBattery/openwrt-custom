@@ -30,11 +30,8 @@ CONFIG_BUSYBOX_CONFIG_BEEP=n
 CONFIG_PACKAGE_beep=y
 CONFIG_PACKAGE_efibootmgr=y
 CONFIG_PACKAGE_efivar=y
-# btrfs-snapshots and the rest of the btrfs stack are in
-# packages-full.seed, so build this target with PKGS=full to get them.
 
-# luci-app-minidlna also promotes minidlna (=m in config-available.seed)
-# to =y through its +minidlna select. Left implicit on purpose.
+# Also promotes minidlna (config-available.seed, =m) via its +minidlna select.
 CONFIG_PACKAGE_luci-app-minidlna=y
 # Promoted from config-available.seed (=m): baked in on this target only.
 CONFIG_PACKAGE_luci-app-samba4=y

@@ -7,8 +7,7 @@ CONFIG_VERSION_MANUFACTURER_URL="https://www.mediatek.com"
 CONFIG_VERSION_MANUFACTURER="MediaTek"
 CONFIG_VERSION_PRODUCT="Ramips"
 
-# Wireless stack for this SoC family. The subtargets ship
-# wpad-basic-mbedtls in DEFAULT_PACKAGES, so it needs an explicit opt-out.
+# Subtargets ship wpad-basic-mbedtls in DEFAULT_PACKAGES; opt out explicitly.
 CONFIG_PACKAGE_luci-app-usteer=y
 CONFIG_PACKAGE_wpad-basic-mbedtls=n
 CONFIG_PACKAGE_wpad-mbedtls=y

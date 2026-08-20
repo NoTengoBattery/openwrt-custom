@@ -27,11 +27,8 @@
 	};
 
 	reserved-memory {
-		/* In the hole between the last SoC carveout (ends 0x90e067ff)
-		 * and the installer's 0x92000000 load address; top-of-RAM is
-		 * unsafe here because U-Boot relocates there with a UBI-sized
-		 * malloc pool.
-		 */
+		/* Between the last SoC carveout and the installer's load address;
+		 * top-of-RAM is unsafe, U-Boot relocates there with a UBI malloc pool. */
 		ramoops@91000000 {
 			compatible = "ramoops";
 			reg = <0x0 0x91000000 0x0 0x600000>;
@@ -138,11 +135,8 @@
 		};
 	};
 
-	/* W1700K does not use the built-in LED controller. Instead, it uses GPIO.
-	 * The driver fails to probe without gswpX_led0_pins defined, so put a dummy
-	 * here.
-	 */
-
+	/* Dummy: the switch driver fails to probe without gswpX_led0_pins, but
+	 * W1700K drives these LEDs from GPIO instead. */
 	gswp1_led0_pins: gswp1-led0-pins {
 		mux {
 			function = "phy1_led0";
@@ -339,8 +333,7 @@
 
 	phy-handle = <&phy8>;
 	phy-mode = "usxgmii";
-	/* Link state arrives in-band over USXGMII. Without this phylink runs the
-	 * port in phy mode, which negotiates but carries no traffic. */
+	/* Without this, phylink runs phy mode: negotiates but carries no traffic. */
 	managed = "in-band-status";
 
 	nvmem-cells = <&wan_mac 0>;
@@ -353,8 +346,7 @@
 
 	phy-handle = <&phy5>;
 	phy-mode = "usxgmii";
-	/* Link state arrives in-band over USXGMII. Without this phylink runs the
-	 * port in phy mode, which negotiates but carries no traffic. */
+	/* Without this, phylink runs phy mode: negotiates but carries no traffic. */
 	managed = "in-band-status";
 
 	nvmem-cells = <&lan_mac 0>;

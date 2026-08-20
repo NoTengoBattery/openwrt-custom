@@ -29,10 +29,7 @@ CONFIG_PACKAGE_udp-broadcast-relay-redux=y
 CONFIG_PACKAGE_luci-app-banip=y
 CONFIG_PACKAGE_luci-app-https-dns-proxy=y
 
-# The btrfs feature appears and disappears as one unit with this tier:
-# btrfs-snapshots pulls in python3 and rsync, and is useless without
-# kmod-fs-btrfs above. Do not move btrfs-snapshots to a target seed
-# without moving the rest of this group with it.
+# btrfs-snapshots is useless without kmod-fs-btrfs above; move as one group.
 CONFIG_BTRFS_PROGS_ZSTD=y
 CONFIG_PACKAGE_btrfs-progs=y
 CONFIG_PACKAGE_btrfs-snapshots=y

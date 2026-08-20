@@ -7,24 +7,17 @@ CONFIG_KERNEL_CFLAGS="-pipe -march=armv8-a -mtune=cortex-a53"
 # All supported devices
 CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi=y
 
-# The installer profile embeds the images the line above produces, so it cannot
-# be seeded: build_me.pl empties bin/targets before every build. Second pass is
+# Can't seed the installer profile too: build_me.pl empties bin/targets, and
+# it embeds the image the line above produces. Second pass, after that copy:
 #   sed -i '/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi=y$/d' .config
 #   echo 'CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi-installer=y' >> .config
 #   make defconfig && make
-# Dropping the base device matters: leaving it selected rebuilds its images after
-# the payload has been copied, so what ships differs from what is embedded.
 
-# Packages for every specific AN7581
-# (hardware enablement — PHY, fan, NPU and wifi firmware, SoC status LuCI
-#  app — is per-device and lives in Device/gemtek_w1700k-ubi
-#  DEVICE_PACKAGES in image/an7581.mk)
-# python3: on-device diagnostic scripting (PPE/wifi monitors) has to
-# survive the slim variant on the deployed APs.
+# Hardware enablement is per-device: Device/gemtek_w1700k-ubi DEVICE_PACKAGES
+# in image/an7581.mk.
 CONFIG_TARGET_DEVICE_PACKAGES_airoha_an7581_DEVICE_gemtek_w1700k-ubi="python3"
 
-# luci-app-airoha-npu reads NPU/FE registers through /dev/mem; its busybox
-# devmem applet is pinned cross-target in config-features.seed.
+# luci-app-airoha-npu needs the busybox devmem applet (config-features.seed).
 CONFIG_KERNEL_DEVMEM=y
 
 # The wireless stack is declared at family scope; see target-airoha.seed.
