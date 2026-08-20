@@ -2,12 +2,11 @@ From: Oever González <software@notengobattery.com>
 Subject: [PATCH] ipq40xx: improve CPU and NAND clock
 Date: Fri, 6 Mar 2020 21:22:44 -0600
 
-This patch will match the values in the device tree for those found inside the
-OEM device tree and kernel source code and unlock all of the CPU operating
-points.
+Unlock every CPU operating point the OEM device tree and gcc-ipq4019
+driver already support, and lower clock-latency to a realistic 100us.
 
-Also, it will set the SPI NAND (the firmware memory) clock to 48MHz, which is
-the maximum for the SPI clock. The NAND chip itself supports up to 104MHz.
+Also raise the SPI NAND clock to 48MHz, the SPI controller's maximum
+(the chip itself goes up to 104MHz).
 
 Signed-off-by: Oever González <software@notengobattery.com>
 ---

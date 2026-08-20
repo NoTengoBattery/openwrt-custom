@@ -2,14 +2,11 @@ From: Oever Gonzalez <software@notengobattery.com>
 Subject: [PATCH] mt76: npu: make the rx descriptor chain walk memory-safe
 
 mt76_npu_dequeue() walks a descriptor chain whose length it reads from
-the info word of the descriptor at the ring tail, with no upper bound:
-a misparsed or stale count strides the walk past the armed slots into
-entries that hold no valid buffer. Consumed descriptors keep their
-DONE bit until the slot is re-armed by the refill path, so such a walk
-passes the per-descriptor DONE check and either re-delivers pages the
-stack already consumed (observed as duplicated packets flushed
-back-to-back to the bridge) or feeds a garbage address into
-dma_sync_single_for_cpu():
+the ring-tail descriptor, with no upper bound: a stale or misparsed
+count strides past the armed slots into entries with no valid buffer.
+DONE stays set on a consumed descriptor until refill re-arms it, so
+the walk passes the DONE check and either re-delivers already-consumed
+pages or feeds a garbage address to dma_sync_single_for_cpu():
 
   Unable to handle kernel paging request at virtual address ffffffff80000700
   CPU: 2 PID: 1472 Comm: napi/phy0-77 Tainted: G O 6.12.94
@@ -21,28 +18,25 @@ dma_sync_single_for_cpu():
    __napi_poll+0x34/0x180
   Kernel panic - not syncing: Oops: Fatal exception in interrupt
 
-The mid-chain bail-out is equally unsound: it frees the partially
-built skb, returning its page-pool pages while the unconsumed ring
-slots still reference them; the same NAPI pass's refill can then
-re-arm those pages at the head, leaving one page owned by two slots.
+The mid-chain bail-out is also unsound: it frees the partial skb while
+the unconsumed ring slots still reference its pages, and the same NAPI
+pass's refill can re-arm those pages at the head - one page, two owners.
 
 Make the walk memory-safe:
  - never walk more slots than are armed (clamp to q->queued);
- - verify the whole chain is DONE before touching any page, so the
-   partial-skb unwind (and its double page ownership) cannot occur;
- - order the descriptor payload reads after the DONE checks (dma_rmb);
- - clear the control word on consume so a stale slot can never pass a
-   DONE check again before being re-armed.
+ - verify the whole chain is DONE before touching any page;
+ - order descriptor reads after the DONE checks (dma_rmb);
+ - clear ctrl on consume so a stale slot can't pass DONE again before
+   being re-armed.
 
-A wrong chain count within the armed region can still mis-frame
-packets (the PKT_COUNT field layout is firmware-ABI-dependent); after
-this change that degrades to a parse error instead of memory
-corruption.
+A wrong count within the armed region can still mis-frame packets
+(PKT_COUNT's layout is firmware-ABI-dependent); this change turns that
+into a parse error instead of memory corruption.
 
 ---
 --- a/npu.c
 +++ b/npu.c
-@@ -67,19 +67,30 @@
+@@ -67,19 +67,27 @@ static struct sk_buff *mt76_npu_dequeue(
  	int i, nframes, index = q->tail;
  	struct sk_buff *skb = NULL;
  
@@ -54,10 +48,7 @@ corruption.
 +	/* a chain can never span more slots than are armed */
 +	nframes = clamp(nframes, 1, q->queued);
  
-+	/* the whole chain must be complete before any page is touched:
-+	 * a partially built skb cannot be unwound without freeing pages
-+	 * the ring still references
-+	 */
++	/* a partial chain can't be unwound: pages the ring still owns */
 +	for (i = 0; i < nframes; i++) {
 +		if (!FIELD_GET(NPU_RX_DMA_DESC_DONE_MASK, desc[index].ctrl))
 +			return NULL;
@@ -79,7 +70,7 @@ corruption.
  		dma_sync_single_for_cpu(dev->dma_dev, e->dma_addr[0],
  					e->dma_len[0],
  					page_pool_get_dma_dir(q->page_pool));
-@@ -104,6 +115,8 @@
+@@ -104,6 +112,8 @@ static struct sk_buff *mt76_npu_dequeue(
  		}
  
  		*info = desc[index].info;

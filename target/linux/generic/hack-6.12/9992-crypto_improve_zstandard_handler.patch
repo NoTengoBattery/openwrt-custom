@@ -2,9 +2,9 @@ From: Oever González <software@notengobattery.com>
 Subject: [PATCH] crypto: improve zstandard handler
 Date: Fri, 17 Jul 2020 20:16:22 -0600
 
-This patch tries to improve the compression used by the crypto module, in
-particular, the zstandard compression by providing it the length of the input
-data and a slightly better compression level.
+zstd_params() always requested parameters for a zero-size input,
+regardless of what is actually being compressed. Pass the real length
+so zstd_get_params() can pick better parameters for it.
 
 Signed-off-by: Oever González <software@notengobattery.com>
 ---

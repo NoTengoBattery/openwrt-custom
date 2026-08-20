@@ -20,10 +20,9 @@ Signed-off-by: Ryan Chen <rchen14b@gmail.com>
  the diagnosis and the fix are his.]
 Signed-off-by: Oever Gonzalez <software@notengobattery.com>
 
-diff --color -ur a/mt76.h b/mt76.h
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1684,6 +1684,7 @@
+@@ -1684,6 +1684,7 @@ int mt76_npu_send_txrx_addr(struct mt76_
  			    u32 direction, u32 i_count_addr,
  			    u32 o_status_addr, u32 o_count_addr);
  void mt76_npu_sta_notify(struct mt76_dev *dev, const u8 *addr);
@@ -31,7 +30,7 @@ diff --color -ur a/mt76.h b/mt76.h
  #else
  static inline void mt76_npu_check_ppe(struct mt76_dev *dev,
  				      struct sk_buff *skb, u32 info)
-@@ -1753,6 +1754,11 @@
+@@ -1753,6 +1754,11 @@ static inline int mt76_npu_send_txrx_add
  static inline void mt76_npu_sta_notify(struct mt76_dev *dev, const u8 *addr)
  {
  }
@@ -43,10 +42,9 @@ diff --color -ur a/mt76.h b/mt76.h
  #endif /* CONFIG_MT76_NPU */
  
  static inline bool mt76_npu_device_active(struct mt76_dev *dev)
-diff --color -ur a/mt7996/main.c b/mt7996/main.c
 --- a/mt7996/main.c
 +++ b/mt7996/main.c
-@@ -1205,6 +1205,9 @@
+@@ -1205,6 +1205,9 @@ void mt7996_mac_sta_remove_link(struct m
  
  	mt76_wcid_cleanup(&dev->mt76, &msta_link->wcid);
  
@@ -56,17 +54,13 @@ diff --color -ur a/mt7996/main.c b/mt7996/main.c
  	if (msta_link->wcid.link_valid) {
  		mt7996_mac_wtbl_update(dev, msta_link->wcid.idx,
  				       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
-diff --color -ur a/npu.c b/npu.c
 --- a/npu.c
 +++ b/npu.c
-@@ -411,6 +411,29 @@
+@@ -406,6 +406,26 @@ void mt76_npu_sta_notify(struct mt76_dev
  }
  EXPORT_SYMBOL_GPL(mt76_npu_sta_notify);
  
-+/* The firmware tracks offloaded stations by wcid and never learns that
-+ * one went away; a client that comes back takes a different slot while
-+ * the stale entry keeps steering traffic at the old one.
-+ */
++/* Firmware tracks stations by wcid and is never told one left. */
 +void mt76_npu_del_sta(struct mt76_dev *dev, int band_idx, u16 wcid_idx)
 +{
 +	struct airoha_npu *npu;

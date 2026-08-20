@@ -2,30 +2,24 @@ From: Oever Gonzalez <software@notengobattery.com>
 Subject: [PATCH] net: airoha: refresh wlan flow templates on STA events
 
 A bridge-type (L2) flow caches the WDMA band/wcid resolved via
-dev_fill_forward_path() once, at rule install time, and
+dev_fill_forward_path() at rule install time, and
 airoha_ppe_foe_commit_subflow_entry() stamps that cached copy into
-every hw subflow. When a STA (re)associates, mt76 assigns a new wcid
-but nothing changes at the FDB level, so the rule owner (bridger, a
-static tc setup) never reinstalls the rule: from that point every new
-subflow binds against the dead wcid and blackholes. The observable
-symptom is TCP bursting for ~1s (sw path until the PPE binds) and then
-cutting, while ICMP - which never binds - keeps flowing.
+every hw subflow. A STA reassociation changes the wcid without
+touching the FDB, so bridger never reinstalls the rule and every new
+subflow binds against the dead wcid.
 
-Add a sta_notify op to airoha_ppe_dev so the wlan driver can report
-STA events. The handler defers to a worker that re-resolves the wdma
-info for affected L2 flows (matched by destination MAC), rewrites the
-cached template (etype band/wcid, ib2 NBQ, ACTDP bss) and flushes
-their subflows so traffic re-binds against fresh data. The egress
-ifindex is recorded at install time to make re-resolution possible.
+Add a sta_notify op to airoha_ppe_dev. The handler defers to a worker
+that re-resolves the wdma info for affected L2 flows (matched by
+destination MAC), rewrites the cached template (etype band/wcid, ib2
+NBQ, ACTDP bss) and flushes their subflows. The egress ifindex is
+recorded at install time to make re-resolution possible.
 
-When re-resolution fails (STA gone, or the driver cannot resolve it -
+When re-resolution fails (STA gone, or the driver can't resolve it -
 mt7996 returns -EIO for a STA that reassociated without a full
-teardown), the template is marked stale and subflow commit is skipped
-entirely: the flow rides the CPU path, slow but correct, instead of
-binding against a template that is known to be wrong. The next
-successful resolve clears the mark and hw binding resumes.
+teardown), mark the template stale and skip subflow commit: the flow
+rides the CPU path instead of binding against a known-wrong template.
+The next successful resolve clears the mark.
 
-diff --color -ur a/drivers/net/ethernet/airoha/airoha_eth.h b/drivers/net/ethernet/airoha/airoha_eth.h
 --- a/drivers/net/ethernet/airoha/airoha_eth.h
 +++ b/drivers/net/ethernet/airoha/airoha_eth.h
 @@ -490,6 +490,11 @@
@@ -52,10 +46,9 @@ diff --color -ur a/drivers/net/ethernet/airoha/airoha_eth.h b/drivers/net/ethern
  	struct airoha_foe_stats *foe_stats;
  	dma_addr_t foe_stats_dma;
  
-diff --color -ur a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/airoha/airoha_ppe.c
 --- a/drivers/net/ethernet/airoha/airoha_ppe.c
 +++ b/drivers/net/ethernet/airoha/airoha_ppe.c
-@@ -800,6 +800,143 @@
+@@ -800,6 +800,140 @@
  	spin_unlock_bh(&ppe_lock);
  }
  
@@ -78,11 +71,8 @@ diff --color -ur a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethern
 +	       FE_PSE_PORT_CDM4;
 +}
 +
-+/* A wlan L2 flow caches the WDMA band/wcid resolved at rule install time
-+ * and every hw subflow inherits that copy, but a STA (re)association can
-+ * change the wcid with no FDB churn for the rule owner to react to: new
-+ * subflows then bind to a dead wcid and blackhole. Re-resolve the cached
-+ * template and flush the subflows so they re-bind against fresh data.
++/* A cached wlan template's wcid goes stale on STA reassoc with no FDB
++ * churn to react to; re-resolve it and flush its subflows.
 + */
 +static void airoha_ppe_wlan_refresh_addr(struct airoha_ppe *ppe,
 +					 const u8 *addr)
@@ -199,20 +189,18 @@ diff --color -ur a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethern
  static int
  airoha_ppe_foe_commit_subflow_entry(struct airoha_ppe *ppe,
  				    struct airoha_flow_table_entry *e,
-@@ -810,6 +947,12 @@
+@@ -810,6 +944,10 @@
  	struct airoha_flow_table_entry *f;
  	int type;
  
-+	/* binding against a stale wlan template blackholes the flow; let it
-+	 * ride the CPU path until a STA event re-resolves the template
-+	 */
++	/* stale wlan template: ride the CPU path until it re-resolves */
 +	if (e->wlan_stale)
 +		return 0;
 +
  	hwe_p = airoha_ppe_foe_get_entry_locked(ppe, hash);
  	if (!hwe_p)
  		return -EINVAL;
-@@ -1214,6 +1357,7 @@
+@@ -1214,6 +1352,7 @@
  		return -ENOMEM;
  
  	e->cookie = f->cookie;
@@ -220,7 +208,7 @@ diff --color -ur a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethern
  	memcpy(&e->data, &hwe, sizeof(e->data));
  
  	err = airoha_ppe_foe_flow_commit_entry(eth->ppe, e);
-@@ -1556,10 +1700,15 @@
+@@ -1556,10 +1695,15 @@
  
  	ppe->dev.ops.setup_tc_block_cb = airoha_ppe_setup_tc_block_cb;
  	ppe->dev.ops.check_skb = airoha_ppe_check_skb;
@@ -236,7 +224,7 @@ diff --color -ur a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethern
  	ppe_num_entries = airoha_ppe_get_total_num_entries(ppe);
  	foe_size = ppe_num_entries * sizeof(struct airoha_foe_entry);
  	ppe->foe = dmam_alloc_coherent(eth->dev, foe_size, &ppe->foe_dma,
-@@ -1617,8 +1766,13 @@
+@@ -1617,8 +1761,13 @@
  
  void airoha_ppe_deinit(struct airoha_eth *eth)
  {
@@ -250,7 +238,6 @@ diff --color -ur a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethern
  	mutex_lock(&flow_offload_mutex);
  
  	npu = rcu_replace_pointer(eth->npu, NULL,
-diff --color -ur a/include/linux/soc/airoha/airoha_offload.h b/include/linux/soc/airoha/airoha_offload.h
 --- a/include/linux/soc/airoha/airoha_offload.h
 +++ b/include/linux/soc/airoha/airoha_offload.h
 @@ -21,6 +21,8 @@

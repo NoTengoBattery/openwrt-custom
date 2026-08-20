@@ -15,6 +15,13 @@ driver is needed with OPP v2 nodes declared in DTS.
 
 Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+[ryan: this driver never matched our root DT compatible, airoha,an7581,
+ so it never registered; added match/blocklist entries for it. Also
+ wire dev_pm_opp_config.virt_devs through to remove(), so it only
+ pm_runtime_put()s the genpd devices the probe actually registered.]
+Signed-off-by: Ryan Chen <rchen14b@gmail.com>
+[oever: imported via 767a8f9894, an XR1710G community build.]
+Signed-off-by: Oever Gonzalez <software@notengobattery.com>
 ---
  drivers/cpufreq/Kconfig.arm          |   8 ++
  drivers/cpufreq/Makefile             |   1 +

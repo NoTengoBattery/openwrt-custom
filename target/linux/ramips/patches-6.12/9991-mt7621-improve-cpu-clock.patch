@@ -2,8 +2,10 @@ From: Oever González <software@notengobattery.com>
 Subject: [PATCH] mt7621: improve CPU clock
 Date: Thu, 29 May 2025 22:26:33 -0600
 
-This patch sets the CPU frequency to a value allowed by the PLL.
-Maximum is 1.2 GHz.
+recalc_rate only read back whatever fbdiv the bootloader left in
+MEMC_REG_CPU_PLL. Compute and write the fbdiv for
+MT7621A_TARGET_CLOCK_HZ instead, then read the PLL back for the
+actual rate.
 
 Signed-off-by: Oever González <software@notengobattery.com>
 ---

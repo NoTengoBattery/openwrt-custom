@@ -13,6 +13,16 @@ that expose the current CPU frequency with SMC command.
 Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 Link: https://lore.kernel.org/r/20250109131313.32317-1-ansuelsmth@gmail.com
 Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+[ryan: the AN7581 SMC handler this driver calls into never behaved like
+ EN7581's; cpufreq_online failed '->get() failed' at every boot.
+ Rewritten to hit the chip-SCU/MCUCFG registers directly, reverse
+ engineered from ATF BL31's en7581_armpll_set()/curr_armpll_clk_get(),
+ posdiv handling included so recalc_rate reads the true frequency. On
+ the W1700K this took cpufreq from absent to a working 500-1200 MHz
+ schedutil policy.]
+Signed-off-by: Ryan Chen <rchen14b@gmail.com>
+[oever: imported via 767a8f9894, an XR1710G community build.]
+Signed-off-by: Oever Gonzalez <software@notengobattery.com>
 ---
  drivers/pmdomain/mediatek/Kconfig             |  12 ++
  drivers/pmdomain/mediatek/Makefile            |   1 +
