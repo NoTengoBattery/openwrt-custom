@@ -580,10 +580,11 @@ export function scan(dev) {
 		exit(1);
 	}
 
+	/* a tri-band sweep with DFS and 6 GHz dwells can take well over 30s */
 	res = nl80211.waitfor([
 		nl80211.const.NL80211_CMD_NEW_SCAN_RESULTS,
 		nl80211.const.NL80211_CMD_SCAN_ABORTED
-	], 5000);
+	], 60000);
 
 	if (!res) {
 		printf("Netlink error while awaiting scan results: " + nl80211.error() + "\n");
