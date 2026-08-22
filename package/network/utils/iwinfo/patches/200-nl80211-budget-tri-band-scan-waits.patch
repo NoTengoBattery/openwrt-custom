@@ -1,0 +1,33 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] nl80211: budget AP-mode scan waits for tri-band sweeps
+
+The hostapd-socket scan path gives up after 75 silent 256ms polls,
+a budget computed for "72 channels at most". A tri-band WiFi 7 radio
+sweeps roughly a hundred channels with DFS and 6 GHz passive dwells
+and routinely needs more than 30 seconds, so the wait expires while
+the scan is still running and the caller reports failure against a
+scan that completes moments later. Budget about a minute of silence
+instead.
+
+Signed-off-by: Oever Gonzalez <software@notengobattery.com>
+---
+--- a/iwinfo_nl80211.c
++++ b/iwinfo_nl80211.c
+@@ -2987,12 +2987,12 @@
+ 
+ 	/*
+ 	 * wait for scan results:
+-	 *   nl80211_wpactl_recv() will use a timeout of 256ms and we need to scan
+-	 *   72 channels at most. We'll also receive two "OK" messages acknowledging
+-	 *   the "ATTACH" and "SCAN" commands and the driver might need a bit extra
+-	 *   time to process the results, so try 72 + 2 + 1 times.
++	 *   nl80211_wpactl_recv() polls with a 256ms timeout; a tri-band
++	 *   sweep with DFS and 6 GHz passive dwells can take well over
++	 *   30s, plus the two "OK" acks for "ATTACH"/"SCAN", so budget
++	 *   about a minute of silence before giving up.
+ 	 */
+-	for (tries = 0; tries < 75; tries++)
++	for (tries = 0; tries < 240; tries++)
+ 	{
+ 		if (nl80211_wpactl_recv(sock, reply, sizeof(reply)) <= 0)
+ 			continue;
