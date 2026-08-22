@@ -21,6 +21,26 @@
 		stdout-path = "serial0:115200n8";
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/* Decoy at U-Boot's injection path: its find-or-add fills this node, which stays disabled, so ramoops@58000000 wins the single slot. */
+		ramoops@7ff70000 {
+			status = "disabled";
+		};
+
+		ramoops@58000000 {
+			compatible = "ramoops";
+			reg = <0x0 0x58000000 0x0 0x600000>;
+			console-size = <0x200000>;
+			pmsg-size    = <0x200000>;
+			record-size  = <0x200000>;
+			ecc-size = <16>;
+		};
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 
