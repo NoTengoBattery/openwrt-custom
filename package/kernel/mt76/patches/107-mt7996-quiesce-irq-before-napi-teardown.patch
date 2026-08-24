@@ -1,0 +1,39 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] mt7996: quiesce the irq path before NAPI teardown
+
+mt7996_unregister_device() disables the irq tasklet only after
+mt7996_dma_cleanup() has already run napi_disable()/netif_napi_del()
+on every queue. The tasklet's whole job is napi_schedule(), so an
+interrupt pending in that window puts a deleted NAPI back on the
+per-CPU softirq poll list; once the module is freed, net_rx_action()
+walks the stale entry and jumps through a NULL ->poll. Observed in
+production on a W1700K whose wedged WFDMA held its RX interrupt
+asserted: rmmod warned six times in page_pool_disable_direct_recycling,
+and the subsequent modprobe died with "unable to handle kernel execute
+from non-executable memory at 0" in __napi_poll (execute-from-NULL,
+panic in interrupt).
+
+Mask both hifs' interrupts and disable the tasklet before tearing the
+DMA down. This also keeps the tasklet's MT_INT_MCU_CMD branch from
+launching mt7996_reset() in the middle of unregister if a dying chip
+raises an MCU error there.
+
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -1838,11 +1838,15 @@ void mt7996_unregister_device(struct mt7996_dev *dev)
+ 	mt7996_wed_rro_free(dev);
+ 	mt7996_mcu_exit(dev);
+ 	mt7996_tx_token_put(dev);
++	/* a pending irq would napi_schedule() a NAPI dma_cleanup is deleting */
++	mt76_wr(dev, MT_INT_MASK_CSR, 0);
++	if (dev->hif2)
++		mt76_wr(dev, MT_INT1_MASK_CSR, 0);
++	tasklet_disable(&dev->mt76.irq_tasklet);
+ 	mt7996_dma_cleanup(dev);
+ 	if (mt7996_has_hwrro(dev) &&
+ 	    !mtk_wed_device_active(&dev->mt76.mmio.wed))
+ 		mt7996_rro_msdu_page_map_free(dev);
+-	tasklet_disable(&dev->mt76.irq_tasklet);
+
+ 	mt76_free_device(&dev->mt76);
+ }
