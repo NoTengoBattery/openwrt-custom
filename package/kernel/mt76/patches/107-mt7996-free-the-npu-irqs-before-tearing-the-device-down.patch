@@ -1,0 +1,105 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] mt7996: free the NPU irqs before tearing the device down
+
+mt76_npu_rx_queue_init() registers the NPU rx interrupts with
+devm_request_irq() on the wireless device, passing the mt76_queue as the
+cookie; the handler dereferences q->dev, dev->mmio.npu and dev->napi[]
+before calling napi_schedule(). devm frees those irqs at driver unbind,
+which happens only after remove() has returned -- and remove() ends in
+mt76_free_device() -> ieee80211_free_hw(), which frees the mt76_dev the
+handler points into. An NPU interrupt taken in that window walks freed
+memory and schedules a NAPI that no longer exists; the next modprobe
+reuses the allocation and net_rx_action() jumps through a NULL ->poll.
+
+Observed on a W1700K: rmmod warns six times in
+page_pool_disable_direct_recycling, then the following modprobe dies
+with "unable to handle kernel execute from non-executable memory at 0"
+in __napi_poll, panicking in interrupt. It reproduces with the radios
+down, because the NPU keeps interrupting for the wired offload path.
+
+Free the NPU irqs first, then mask both hifs and stop the tasklet before
+the DMA teardown, so nothing can reach a NAPI that dma_cleanup is about
+to delete. Masking also keeps the tasklet's MT_INT_MCU_CMD branch from
+launching mt7996_reset() in the middle of unregister.
+
+--- a/npu.c
++++ b/npu.c
+@@ -479,6 +479,35 @@ unlock:
+ }
+ EXPORT_SYMBOL_GPL(mt76_npu_disable_irqs);
+ 
++void mt76_npu_free_irqs(struct mt76_dev *dev)
++{
++	struct airoha_npu *npu;
++	int i;
++
++	mutex_lock(&dev->mutex);
++
++	npu = rcu_dereference_protected(dev->mmio.npu,
++					lockdep_is_held(&dev->mutex));
++	if (!npu)
++		goto unlock;
++
++	for (i = MT_RXQ_NPU0; i <= MT_RXQ_NPU1; i++) {
++		int index = i - MT_RXQ_NPU0;
++
++		/* the handler outlives the device otherwise: devm releases it
++		 * only at unbind, after remove() has freed the mt76_dev
++		 */
++		if (index >= ARRAY_SIZE(npu->irqs) || !dev->q_rx[i].ndesc)
++			continue;
++
++		airoha_npu_wlan_disable_irq(npu, index);
++		devm_free_irq(dev->dev, npu->irqs[index], &dev->q_rx[i]);
++	}
++unlock:
++	mutex_unlock(&dev->mutex);
++}
++EXPORT_SYMBOL_GPL(mt76_npu_free_irqs);
++
+ int mt76_npu_init(struct mt76_dev *dev, phys_addr_t phy_addr, int type)
+ {
+ 	struct airoha_ppe_dev *ppe_dev;
+--- a/mt76.h
++++ b/mt76.h
+@@ -1672,6 +1672,7 @@ int mt76_npu_rx_queue_init(struct mt76_d
+ int mt76_npu_fill_rx_queue(struct mt76_dev *dev, struct mt76_queue *q);
+ void mt76_npu_queue_cleanup(struct mt76_dev *dev, struct mt76_queue *q);
+ void mt76_npu_disable_irqs(struct mt76_dev *dev);
++void mt76_npu_free_irqs(struct mt76_dev *dev);
+ int mt76_npu_init(struct mt76_dev *dev, phys_addr_t phy_addr, int type);
+ void mt76_npu_deinit(struct mt76_dev *dev);
+ void mt76_npu_queue_setup(struct mt76_dev *dev, struct mt76_queue *q);
+@@ -1715,6 +1716,10 @@ static inline void mt76_npu_disable_irqs
+ {
+ }
+ 
++static inline void mt76_npu_free_irqs(struct mt76_dev *dev)
++{
++}
++
+ static inline int mt76_npu_init(struct mt76_dev *dev, phys_addr_t phy_addr,
+ 				int type)
+ {
+--- a/mt7996/init.c
++++ b/mt7996/init.c
+@@ -1838,11 +1838,18 @@ void mt7996_unregister_device(struct mt7
+ 	mt7996_wed_rro_free(dev);
+ 	mt7996_mcu_exit(dev);
+ 	mt7996_tx_token_put(dev);
++	/* nothing may reach a NAPI dma_cleanup is about to delete: the NPU
++	 * handler would outlive the device, a pending irq would reschedule
++	 */
++	mt76_npu_free_irqs(&dev->mt76);
++	mt76_wr(dev, MT_INT_MASK_CSR, 0);
++	if (dev->hif2)
++		mt76_wr(dev, MT_INT1_MASK_CSR, 0);
++	tasklet_disable(&dev->mt76.irq_tasklet);
+ 	mt7996_dma_cleanup(dev);
+ 	if (mt7996_has_hwrro(dev) &&
+ 	    !mtk_wed_device_active(&dev->mt76.mmio.wed))
+ 		mt7996_rro_msdu_page_map_free(dev);
+-	tasklet_disable(&dev->mt76.irq_tasklet);
+ 
+ 	mt76_free_device(&dev->mt76);
+ }
