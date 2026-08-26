@@ -1,0 +1,48 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] mt76: expose the tx token pool in debugfs
+
+Token exhaustion is invisible from userspace: when the pool runs dry the
+driver simply stops accepting frames, and every symptom appears
+somewhere else -- on airoha NPU offload it surfaces as the NPU's
+handoff queue reporting full forever, with the wireless side apparently
+idle and the kernel silent. There is no way to tell that apart from a
+stuck queue handshake without rebuilding the driver.
+
+Print the counters the allocator already maintains, so a leak can be
+watched as it develops rather than inferred after the fact.
+
+--- a/debugfs.c
++++ b/debugfs.c
+@@ -88,6 +88,23 @@ static int mt76_rx_queues_read(struct seq
+ 	return 0;
+ }
+ 
++static int mt76_tokens_read(struct seq_file *s, void *data)
++{
++	struct mt76_dev *dev = dev_get_drvdata(s->private);
++	u16 count, wed_count;
++
++	spin_lock_bh(&dev->token_lock);
++	count = dev->token_count;
++	wed_count = dev->wed_token_count;
++	spin_unlock_bh(&dev->token_lock);
++
++	seq_printf(s, "token_count %u\n", count);
++	seq_printf(s, "wed_token_count %u\n", wed_count);
++	seq_printf(s, "token_size %u\n", dev->token_size);
++
++	return 0;
++}
++
+ void mt76_seq_puts_array(struct seq_file *file, const char *str,
+ 			 s8 *val, int len)
+ {
+@@ -120,6 +137,8 @@ mt76_register_debugfs_fops(struct mt76_p
+ 		debugfs_create_blob("otp", 0400, dir, &dev->otp);
+ 	debugfs_create_devm_seqfile(dev->dev, "rx-queues", dir,
+ 				    mt76_rx_queues_read);
++	debugfs_create_devm_seqfile(dev->dev, "tokens", dir,
++				    mt76_tokens_read);
+ 
+ 	return dir;
+ }
