@@ -1,0 +1,54 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] mt76: npu: publish rx descriptors before arming them
+
+The NPU treats a descriptor whose ctrl reads back with DONE clear as an
+armed slot it may write into. The refill publishes descriptors in the
+wrong order for that contract: memset clears ctrl, arming the slot,
+before the new buffer address is stored, and nothing orders the two --
+the dequeue side has a dma_rmb(), the fill side has no barrier at all.
+
+  mt76_npu_fill_rx_queue()  memset(&desc[head], 0, ...);  /* armed, addr 0 */
+                            desc[head].addr = new;        /* address last */
+
+If the NPU takes the slot in that window it DMAs a frame to address zero
+and advances its producer index (CPU_IDX, which the NPU owns), while the
+host still expects its own refill in that slot: the two sides' ring
+positions drift by one per hit. The host's only index write is DMA_IDX,
+its consume position, advanced on a successful dequeue -- exactly the
+operation the drift breaks, since the host ends up waiting for DONE on
+a slot the NPU has already passed. The queue then deadlocks with the
+driver reporting every slot armed and the NPU reporting
+HOSTADPT_API_Q_FULL forever, silently, and only re-probing the device
+recovers it.
+
+Order the refill so ctrl is written last, behind a dma_wmb().
+
+An earlier revision of the chain-walk fix also cleared ctrl on consume,
+which widened this window from one memset to the whole span between
+consume and refill; the reproduction below ran on that revision.
+Reproducer on a Gemtek W1700K (AN7581 + MT7996): stop bridger while
+~1.1 Gbit/s is in flight to a 6 GHz client. Before: 3/3 wedges, rx-queue
+head/tail frozen at 511 armed, Q_FULL growing by exactly the delivery
+shortfall. After: 5/5 survived at ~40k pps; each transition still costs
+a burst of Q_FULL drops, which now recover within the same window
+instead of latching.
+
+--- a/npu.c
++++ b/npu.c
+@@ -32,8 +32,15 @@
+ 		page = virt_to_head_page(e->buf);
+ 		e->dma_addr[0] = page_pool_get_dma_addr(page) + offset;
+ 
+-		memset(&desc[q->head], 0, sizeof(*desc));
++		/* the NPU takes a cleared ctrl as "armed", so ctrl is written
++		 * last and only once the new address is visible to it
++		 */
++		desc[q->head].info = 0;
++		desc[q->head].data = 0;
+ 		desc[q->head].addr = e->dma_addr[0];
++		desc[q->head].rsv = 0;
++		dma_wmb();
++		WRITE_ONCE(desc[q->head].ctrl, 0);
+ 
+ 		q->head = (q->head + 1) % q->ndesc;
+ 		q->queued++;
