@@ -1,0 +1,41 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] net: airoha: npu: bound the mailbox poll
+
+__airoha_npu_send_msg() waits for the NPU to acknowledge a mailbox
+message with regmap_read_poll_timeout_atomic() and a 100 second timeout,
+inside spin_lock_bh(), and the retry loop added for rejected messages
+runs the whole thing three times. An NPU that stops answering
+therefore spins a CPU with bottom halves disabled for up to five
+minutes per message.
+
+That is not a theoretical window. The wireless driver polls this mailbox
+from its reset path, and the PPE calls it from foe_commit in atomic
+context, so a single unanswered message takes the machine down with it:
+unrelated processes pile up in uninterruptible sleep, "reboot -f" hangs
+because it cannot complete device shutdown, and only sysrq gets out.
+
+Nothing here is slow when it works -- the hot path is a flow commit, and
+the poll interval is 100 us. Give it 100 ms, still a thousand times the
+expected latency, and let the retry loop cover a transient. Worst
+case goes from five minutes to under a second, and a dead NPU surfaces
+as the -ETIMEDOUT its callers already handle.
+
+--- a/drivers/net/ethernet/airoha/airoha_npu.c
++++ b/drivers/net/ethernet/airoha/airoha_npu.c
+@@ -29,6 +29,7 @@
+  * is 16 bytes (INODE_TXRX_REG_ADDR). Keep headroom for future commands.
+  */
+ #define AIROHA_NPU_MBOX_SIZE			256
++#define AIROHA_NPU_MBOX_TIMEOUT_US		(100 * USEC_PER_MSEC)
+ 
+ #define REG_NPU_LOCAL_SRAM		0x0
+ 
+@@ -203,7 +204,7 @@
+ 	ret = regmap_read_poll_timeout_atomic(npu->regmap,
+ 					      REG_CR_MBQ0_CTRL(3) + offset,
+ 					      val, (val & MBOX_MSG_DONE),
+-					      100, 100 * MSEC_PER_SEC);
++					      100, AIROHA_NPU_MBOX_TIMEOUT_US);
+ 	if (!ret && FIELD_GET(MBOX_MSG_STATUS, val) != NPU_MBOX_SUCCESS)
+ 		ret = -EINVAL;
+ 
