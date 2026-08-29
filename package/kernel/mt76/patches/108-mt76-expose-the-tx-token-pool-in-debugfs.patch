@@ -11,9 +11,15 @@ stuck queue handshake without rebuilding the driver.
 Print the counters the allocator already maintains, so a leak can be
 watched as it develops rather than inferred after the fact.
 
+Report token_start with them. The counters cover the ids the driver
+allocates, which start above whatever an offload engine has reserved;
+on airoha NPU that leaves the entire 8192-entry hardware pool -- the one
+the offload path actually draws from -- outside the numbers printed
+here. Without the start id the file reads as if it covered everything.
+
 --- a/debugfs.c
 +++ b/debugfs.c
-@@ -88,6 +88,23 @@ static int mt76_rx_queues_read(struct seq
+@@ -88,6 +88,27 @@
  	return 0;
  }
  
@@ -30,6 +36,10 @@ watched as it develops rather than inferred after the fact.
 +	seq_printf(s, "token_count %u\n", count);
 +	seq_printf(s, "wed_token_count %u\n", wed_count);
 +	seq_printf(s, "token_size %u\n", dev->token_size);
++	/* ids below token_start belong to an offload engine and are not
++	 * accounted here: on airoha NPU that is the whole hardware pool
++	 */
++	seq_printf(s, "token_start %u\n", dev->token_start);
 +
 +	return 0;
 +}
@@ -37,7 +47,7 @@ watched as it develops rather than inferred after the fact.
  void mt76_seq_puts_array(struct seq_file *file, const char *str,
  			 s8 *val, int len)
  {
-@@ -120,6 +137,8 @@ mt76_register_debugfs_fops(struct mt76_p
+@@ -120,6 +141,8 @@
  		debugfs_create_blob("otp", 0400, dir, &dev->otp);
  	debugfs_create_devm_seqfile(dev->dev, "rx-queues", dir,
  				    mt76_rx_queues_read);
