@@ -3,7 +3,8 @@ Subject: [PATCH] net: airoha: npu: bound the mailbox poll
 
 __airoha_npu_send_msg() waits for the NPU to acknowledge a mailbox
 message with regmap_read_poll_timeout_atomic() and a 100 second timeout,
-inside spin_lock_bh(), and retries the whole thing three times. An NPU
+inside spin_lock_bh(), and the retry loop added for rejected messages
+runs the whole thing three times. An NPU
 that stops answering therefore spins a CPU with bottom halves disabled
 for up to five minutes per message.
 
@@ -15,7 +16,7 @@ because it cannot complete device shutdown, and only sysrq gets out.
 
 Nothing here is slow when it works -- the hot path is a flow commit, and
 the poll interval is 100 us. Give it 100 ms, still a thousand times the
-expected latency, and let the existing retries cover a transient. Worst
+expected latency, and let the retry loop cover a transient. Worst
 case goes from five minutes to under a second, and a dead NPU surfaces
 as the -ETIMEDOUT its callers already handle.
 

@@ -3,10 +3,12 @@ Subject: [PATCH] mt76: expose the tx token pool in debugfs
 
 Token exhaustion is invisible from userspace: when the pool runs dry the
 driver simply stops accepting frames, and every symptom appears
-somewhere else -- on airoha NPU offload it surfaces as the NPU's
-handoff queue reporting full forever, with the wireless side apparently
-idle and the kernel silent. There is no way to tell that apart from a
-stuck queue handshake without rebuilding the driver.
+somewhere else. On airoha NPU offload, the NPU's handoff queue reporting
+full forever -- wireless side apparently idle, kernel silent -- looks
+exactly like it, and there is no way to tell the two apart without
+rebuilding the driver. These counters are what ruled it out there: 2-26
+tokens in flight throughout a wedge that turned out to be a ring
+handshake fault.
 
 Print the counters the allocator already maintains, so a leak can be
 watched as it develops rather than inferred after the fact.

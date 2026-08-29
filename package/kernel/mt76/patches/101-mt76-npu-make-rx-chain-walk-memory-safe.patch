@@ -25,18 +25,15 @@ pass's refill can re-arm those pages at the head - one page, two owners.
 Make the walk memory-safe:
  - never walk more slots than are armed (clamp to q->queued);
  - verify the whole chain is DONE before touching any page;
- - order descriptor reads after the DONE checks (dma_rmb);
- - clear ctrl on consume so a stale slot can't pass DONE again before
-   being re-armed.
+ - order descriptor reads after the DONE checks (dma_rmb).
 
 A wrong count within the armed region can still mis-frame packets
 (PKT_COUNT's layout is firmware-ABI-dependent); this change turns that
 into a parse error instead of memory corruption.
 
----
 --- a/npu.c
 +++ b/npu.c
-@@ -67,19 +67,27 @@ static struct sk_buff *mt76_npu_dequeue(
+@@ -67,19 +67,27 @@
  	int i, nframes, index = q->tail;
  	struct sk_buff *skb = NULL;
  
@@ -47,7 +44,7 @@ into a parse error instead of memory corruption.
 -	nframes = max_t(int, nframes, 1);
 +	/* a chain can never span more slots than are armed */
 +	nframes = clamp(nframes, 1, q->queued);
- 
++
 +	/* a partial chain can't be unwound: pages the ring still owns */
 +	for (i = 0; i < nframes; i++) {
 +		if (!FIELD_GET(NPU_RX_DMA_DESC_DONE_MASK, desc[index].ctrl))
@@ -55,7 +52,7 @@ into a parse error instead of memory corruption.
 +		index = (index + 1) % q->ndesc;
 +	}
 +	dma_rmb();
-+
+ 
 +	index = q->tail;
  	for (i = 0; i < nframes; i++) {
  		struct mt76_queue_entry *e = &q->entry[index];
@@ -70,12 +67,3 @@ into a parse error instead of memory corruption.
  		dma_sync_single_for_cpu(dev->dma_dev, e->dma_addr[0],
  					e->dma_len[0],
  					page_pool_get_dma_dir(q->page_pool));
-@@ -104,6 +112,8 @@ static struct sk_buff *mt76_npu_dequeue(
- 		}
- 
- 		*info = desc[index].info;
-+		/* a consumed slot must not look DONE until re-armed */
-+		desc[index].ctrl = 0;
- 		index = (index + 1) % q->ndesc;
- 	}
- 	q->tail = index;
