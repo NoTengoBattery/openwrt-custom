@@ -1,0 +1,44 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] mt76: npu: ring the rx doorbell after refilling the queue
+
+The NPU rx rings expose the usual Airoha register quad -- desc_base,
+ring_size, cpu_idx, dma_idx -- at REG_RX_BASE(qid), and CPU_IDX is how
+the host announces how far it has armed descriptors. airoha_eth drives
+the identical block and ends every refill with it:
+
+  airoha_qdma_fill_rx_queue()
+      if (nframes)
+              airoha_qdma_rmw(qdma, REG_RX_CPU_IDX(qid), ...,
+                              FIELD_PREP(RX_RING_CPU_IDX_MASK, q->head));
+
+mt76_npu_fill_rx_queue() writes no register at all. It re-arms slots and
+advances its own q->head, and the NPU is never told. The only index the
+driver publishes is DMA_IDX -- the engine's own position -- written from
+mt76_npu_dequeue(), which is exactly the path that stops running once
+the ring stalls.
+
+So the two sides have no way back once they disagree: the driver reports
+every slot armed while the NPU reports its host adapter queue
+permanently full, and nothing short of the probe-time desc_base write
+restores a common view. On a Gemtek W1700K this deadlocks the whole
+NPU->WLAN handoff, silently and permanently, whenever a burst arrives at
+the transition where hardware flow offload is removed under load.
+
+Announce q->head on CPU_IDX after a refill, matching airoha_eth. The
+register's upper half carries nothing, so a plain write is fine.
+
+--- a/npu.c
++++ b/npu.c
+@@ -47,6 +47,12 @@
+ 		nframes++;
+ 	}
+ 
++	/* the NPU tracks free slots through CPU_IDX; without this it never
++	 * learns about refilled descriptors and stalls with its queue full
++	 */
++	if (nframes)
++		Q_WRITE(q, cpu_idx, q->head);
++
+ 	return nframes;
+ }
+ 
