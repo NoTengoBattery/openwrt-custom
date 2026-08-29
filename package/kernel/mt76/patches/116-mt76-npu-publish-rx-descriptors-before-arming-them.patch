@@ -1,0 +1,64 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] mt76: npu: publish rx descriptors before arming them
+
+The NPU treats a descriptor whose ctrl reads back with DONE clear as an
+armed slot it may write into. The refill publishes descriptors in the
+wrong order for that contract -- memset clears ctrl (arming the slot)
+before the new buffer address is stored, with no barrier (the dequeue
+side has a dma_rmb(), the fill side none) -- and the consume path arms
+the slot even earlier:
+
+  mt76_npu_dequeue()        desc[index].ctrl = 0;   /* armed... */
+  ...                                               /* page handed to an skb */
+  mt76_npu_fill_rx_queue()  memset(&desc[head], 0, ...);  /* armed again */
+                            desc[head].addr = new;        /* address last */
+
+If the NPU takes the slot anywhere in that window it DMAs a frame to a
+stale or zero address and advances its producer index (CPU_IDX -- the
+NPU owns that register and publishes its write position there), while
+the host still expects its own refill in that slot: the two sides' ring
+positions drift by one per hit. The host's only index write is DMA_IDX,
+its consume position, advanced on a successful dequeue -- exactly the
+operation the drift breaks, since the host ends up waiting for DONE on
+a slot the NPU has already passed. The queue then deadlocks with the
+driver reporting every slot armed and the NPU reporting its
+host-adapter queue permanently full, and only re-probing the device
+recovers it.
+
+Order the refill so ctrl is written last, behind a dma_wmb(), and do
+not clear ctrl on consume -- the chain walk is bounded by q->queued, so
+a stale DONE behind the tail is unreachable.
+
+Reproduced on a Gemtek W1700K (Airoha AN7581 + MT7996) by removing
+hardware flow offload while ~1.1 Gbit/s is in flight to a 6 GHz client:
+3/3 wedges, with rx-queue head/tail frozen and HOSTADPT_API_Q_FULL
+growing by exactly the delivery shortfall.
+
+--- a/npu.c
++++ b/npu.c
+@@ -32,8 +32,15 @@
+ 		page = virt_to_head_page(e->buf);
+ 		e->dma_addr[0] = page_pool_get_dma_addr(page) + offset;
+ 
+-		memset(&desc[q->head], 0, sizeof(*desc));
++		/* the NPU takes a cleared ctrl as "armed", so ctrl is written
++		 * last and only once the new address is visible to it
++		 */
++		desc[q->head].info = 0;
++		desc[q->head].data = 0;
+ 		desc[q->head].addr = e->dma_addr[0];
++		desc[q->head].rsv = 0;
++		dma_wmb();
++		WRITE_ONCE(desc[q->head].ctrl, 0);
+ 
+ 		q->head = (q->head + 1) % q->ndesc;
+ 		q->queued++;
+@@ -112,8 +119,6 @@
+ 		}
+ 
+ 		*info = desc[index].info;
+-		/* a consumed slot must not look DONE until re-armed */
+-		desc[index].ctrl = 0;
+ 		index = (index + 1) % q->ndesc;
+ 	}
+ 	q->tail = index;
