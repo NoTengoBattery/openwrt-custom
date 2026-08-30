@@ -371,6 +371,26 @@
 			// interrupts = <22 IRQ_TYPE_LEVEL_LOW>;
 			realtek,pnswap-tx;
 			realtek,pnswap-rx;
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				/* The jack LEDs sit on PHY LED2/LED3; LED0/LED1 are unbonded. */
+				led@2 {
+					reg = <2>;
+					color = <LED_COLOR_ID_YELLOW>;
+					function = LED_FUNCTION_LAN;
+					function-enumerator = <2>;
+				};
+
+				led@3 {
+					reg = <3>;
+					color = <LED_COLOR_ID_GREEN>;
+					function = LED_FUNCTION_LAN;
+					function-enumerator = <2>;
+				};
+			};
 		};
 
 		phy8: ethernet-phy@8 {
@@ -383,6 +403,24 @@
 			// interrupts = <23 IRQ_TYPE_LEVEL_LOW>;
 			realtek,pnswap-tx;
 			realtek,pnswap-rx;
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				/* The jack LEDs sit on PHY LED2/LED3; LED0/LED1 are unbonded. */
+				led@2 {
+					reg = <2>;
+					color = <LED_COLOR_ID_YELLOW>;
+					function = LED_FUNCTION_WAN;
+				};
+
+				led@3 {
+					reg = <3>;
+					color = <LED_COLOR_ID_GREEN>;
+					function = LED_FUNCTION_WAN;
+				};
+			};
 		};
 	};
 };

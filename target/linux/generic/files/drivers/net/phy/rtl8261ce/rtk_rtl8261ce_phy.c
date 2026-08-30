@@ -105,12 +105,27 @@
 #define RTL8261CE_THERMAL_THRESHOLD_SHIFT	7
 #define RTL8261CE_INDIRECT_PATCH_VER 0x801e
 #define RTL8261CE_INDIRECT_PATCH_SETUP 0x8023
-#define RTL8261CE_VND2_EEE_CTRL0 0xd036
-#define RTL8261CE_VND2_EEE_CTRL1 0xd038
+
+/* One LCR (LED control register) per LED selects the link speeds that light
+ * it; BCR adds activity blink; ECR holds per-LED enable and polarity bits.
+ */
+#define RTL8261CE_LED_COUNT 4
+#define RTL8261CE_VND2_LEDCR_BASE 0xd032
+#define RTL8261CE_LEDCR_STRIDE 2
+#define RTL8261CE_LEDCR_LINK_10 BIT(0)
+#define RTL8261CE_LEDCR_LINK_100 BIT(1)
+#define RTL8261CE_LEDCR_LINK_1000 BIT(2)
+#define RTL8261CE_LEDCR_LINK_10000 BIT(4)
+#define RTL8261CE_LEDCR_LINK_2500 BIT(5)
+#define RTL8261CE_LEDCR_LINK_5000 BIT(6)
+#define RTL8261CE_VND2_LED_BCR 0xd040
+#define RTL8261CE_VND2_LED_ECR 0xd044
 
 struct rtl8261ce_priv {
 	/* Guard the recovered init flow; phylib may call config_init again. */
 	bool initialized;
+	/* Per-LED DT polarity; ECR is reprogrammed on every trigger update. */
+	u8 led_active_low;
 };
 
 struct rtl8261ce_regval {
@@ -855,17 +870,10 @@ static int rtl8261ce_restore_runtime_state(struct phy_device *phydev)
 	 */
 	rtl8261ce_apply_board_serdes_polarity(phydev);
 
-	/* Recovered EEE defaults plus thermal downspeed protection. */
-	ret = phy_write_mmd(phydev, MDIO_MMD_VEND2, RTL8261CE_VND2_EEE_CTRL0,
-			    0x0067);
-	if (ret < 0)
-		return ret;
-
-	ret = phy_write_mmd(phydev, MDIO_MMD_VEND2, RTL8261CE_VND2_EEE_CTRL1,
-			    0x0010);
-	if (ret < 0)
-		return ret;
-
+	/* The recovered module wrote 0x0067/0x0010 to 0xd036/0xd038 here; those
+	 * are LCR speed masks for LED2/LED3 (the W1700K jack LEDs), not EEE
+	 * controls, and the LED framework owns them now.
+	 */
 	return phy_set_bits_mmd(phydev, MDIO_MMD_VEND2,
 				RTL8261CE_VND2_THERMAL_SENSOR_CTRL,
 				RTL8261CE_THERMAL_OVERTEMP_DWNSPD_EN);
@@ -1066,6 +1074,216 @@ static int rtl8261ce_read_status(struct phy_device *phydev)
 	return 0;
 }
 
+/* LED callbacks ported from cmonroe's 992-08-02 RTL8261C LED patch; the CE
+ * shares the 8261C LCR/BCR/ECR block.
+ */
+static int rtl8261ce_led_hw_is_supported(struct phy_device *phydev, u8 index,
+					 unsigned long rules)
+{
+	const unsigned long activity_mask = BIT(TRIGGER_NETDEV_TX) |
+					    BIT(TRIGGER_NETDEV_RX);
+	const unsigned long mask = BIT(TRIGGER_NETDEV_LINK) |
+				   BIT(TRIGGER_NETDEV_LINK_10) |
+				   BIT(TRIGGER_NETDEV_LINK_100) |
+				   BIT(TRIGGER_NETDEV_LINK_1000) |
+				   BIT(TRIGGER_NETDEV_LINK_2500) |
+				   BIT(TRIGGER_NETDEV_LINK_5000) |
+				   BIT(TRIGGER_NETDEV_LINK_10000) |
+				   activity_mask;
+
+	if (index >= RTL8261CE_LED_COUNT)
+		return -EINVAL;
+
+	if (rules & ~mask)
+		return -EOPNOTSUPP;
+
+	/* HW activity blink is speed-gated; an activity-only rule cannot map. */
+	if ((rules & activity_mask) && !(rules & ~activity_mask))
+		return -EOPNOTSUPP;
+
+	return 0;
+}
+
+static int rtl8261ce_led_hw_control_get(struct phy_device *phydev, u8 index,
+					unsigned long *rules)
+{
+	u16 reg = RTL8261CE_VND2_LEDCR_BASE + index * RTL8261CE_LEDCR_STRIDE;
+	int val;
+
+	if (index >= RTL8261CE_LED_COUNT)
+		return -EINVAL;
+
+	val = phy_read_mmd(phydev, MDIO_MMD_VEND2, reg);
+	if (val < 0)
+		return val;
+
+	if (val & RTL8261CE_LEDCR_LINK_10)
+		__set_bit(TRIGGER_NETDEV_LINK_10, rules);
+
+	if (val & RTL8261CE_LEDCR_LINK_100)
+		__set_bit(TRIGGER_NETDEV_LINK_100, rules);
+
+	if (val & RTL8261CE_LEDCR_LINK_1000)
+		__set_bit(TRIGGER_NETDEV_LINK_1000, rules);
+
+	if (val & RTL8261CE_LEDCR_LINK_2500)
+		__set_bit(TRIGGER_NETDEV_LINK_2500, rules);
+
+	if (val & RTL8261CE_LEDCR_LINK_5000)
+		__set_bit(TRIGGER_NETDEV_LINK_5000, rules);
+
+	if (val & RTL8261CE_LEDCR_LINK_10000)
+		__set_bit(TRIGGER_NETDEV_LINK_10000, rules);
+
+	if ((val & RTL8261CE_LEDCR_LINK_10) &&
+	    (val & RTL8261CE_LEDCR_LINK_100) &&
+	    (val & RTL8261CE_LEDCR_LINK_1000) &&
+	    (val & RTL8261CE_LEDCR_LINK_2500) &&
+	    (val & RTL8261CE_LEDCR_LINK_5000) &&
+	    (val & RTL8261CE_LEDCR_LINK_10000))
+		__set_bit(TRIGGER_NETDEV_LINK, rules);
+
+	val = phy_read_mmd(phydev, MDIO_MMD_VEND2, RTL8261CE_VND2_LED_BCR);
+	if (val < 0)
+		return val;
+
+	if (val & BIT(index)) {
+		__set_bit(TRIGGER_NETDEV_TX, rules);
+		__set_bit(TRIGGER_NETDEV_RX, rules);
+	}
+
+	return 0;
+}
+
+static int rtl8261ce_led_hw_control_set(struct phy_device *phydev, u8 index,
+					unsigned long rules)
+{
+	struct rtl8261ce_priv *priv = phydev->priv;
+	u16 reg = RTL8261CE_VND2_LEDCR_BASE + index * RTL8261CE_LEDCR_STRIDE;
+	u16 ecr_mask = BIT(index) | BIT(index + 4);
+	u16 ecr_val, val = 0;
+	int ret;
+
+	if (index >= RTL8261CE_LED_COUNT)
+		return -EINVAL;
+
+	if (test_bit(TRIGGER_NETDEV_LINK, &rules) ||
+	    test_bit(TRIGGER_NETDEV_LINK_10, &rules))
+		val |= RTL8261CE_LEDCR_LINK_10;
+
+	if (test_bit(TRIGGER_NETDEV_LINK, &rules) ||
+	    test_bit(TRIGGER_NETDEV_LINK_100, &rules))
+		val |= RTL8261CE_LEDCR_LINK_100;
+
+	if (test_bit(TRIGGER_NETDEV_LINK, &rules) ||
+	    test_bit(TRIGGER_NETDEV_LINK_1000, &rules))
+		val |= RTL8261CE_LEDCR_LINK_1000;
+
+	if (test_bit(TRIGGER_NETDEV_LINK, &rules) ||
+	    test_bit(TRIGGER_NETDEV_LINK_2500, &rules))
+		val |= RTL8261CE_LEDCR_LINK_2500;
+
+	if (test_bit(TRIGGER_NETDEV_LINK, &rules) ||
+	    test_bit(TRIGGER_NETDEV_LINK_5000, &rules))
+		val |= RTL8261CE_LEDCR_LINK_5000;
+
+	if (test_bit(TRIGGER_NETDEV_LINK, &rules) ||
+	    test_bit(TRIGGER_NETDEV_LINK_10000, &rules))
+		val |= RTL8261CE_LEDCR_LINK_10000;
+
+	ret = phy_write_mmd(phydev, MDIO_MMD_VEND2, reg, val);
+	if (ret < 0)
+		return ret;
+
+	ret = phy_modify_mmd(phydev, MDIO_MMD_VEND2, RTL8261CE_VND2_LED_BCR,
+			     BIT(index),
+			     (test_bit(TRIGGER_NETDEV_TX, &rules) ||
+			      test_bit(TRIGGER_NETDEV_RX, &rules)) ?
+			     BIT(index) : 0);
+	if (ret < 0)
+		return ret;
+
+	/* ECR polarity bit set means the pin idles high (active-low LED). */
+	ecr_val = BIT(index + 4);
+	if (priv->led_active_low & BIT(index))
+		ecr_val |= BIT(index);
+
+	return phy_modify_mmd(phydev, MDIO_MMD_VEND2, RTL8261CE_VND2_LED_ECR,
+			      ecr_mask, ecr_val);
+}
+
+static int rtl8261ce_led_brightness_set(struct phy_device *phydev, u8 index,
+					enum led_brightness brightness)
+{
+	struct rtl8261ce_priv *priv = phydev->priv;
+	u16 reg = RTL8261CE_VND2_LEDCR_BASE + index * RTL8261CE_LEDCR_STRIDE;
+	u16 ecr_mask = BIT(index) | BIT(index + 4);
+	bool active;
+	u16 ecr_val;
+	int ret;
+
+	if (index >= RTL8261CE_LED_COUNT)
+		return -EINVAL;
+
+	ret = phy_write_mmd(phydev, MDIO_MMD_VEND2, reg, 0);
+	if (ret < 0)
+		return ret;
+
+	ret = phy_clear_bits_mmd(phydev, MDIO_MMD_VEND2,
+				 RTL8261CE_VND2_LED_BCR, BIT(index));
+	if (ret < 0)
+		return ret;
+
+	/* With speed match and blink cleared, the polarity bit is the lever. */
+	active = (brightness != LED_OFF) ^
+		 !!(priv->led_active_low & BIT(index));
+
+	ecr_val = BIT(index + 4);
+	if (active)
+		ecr_val |= BIT(index);
+
+	return phy_modify_mmd(phydev, MDIO_MMD_VEND2, RTL8261CE_VND2_LED_ECR,
+			      ecr_mask, ecr_val);
+}
+
+static int rtl8261ce_led_polarity_set(struct phy_device *phydev, int index,
+				      unsigned long modes)
+{
+	struct rtl8261ce_priv *priv = phydev->priv;
+	bool active_low = false, active_high = false;
+	u32 mode;
+
+	if (index >= RTL8261CE_LED_COUNT)
+		return -EINVAL;
+
+	for_each_set_bit(mode, &modes, __PHY_LED_MODES_NUM) {
+		switch (mode) {
+		case PHY_LED_ACTIVE_LOW:
+			active_low = true;
+			break;
+		case PHY_LED_ACTIVE_HIGH:
+			active_high = true;
+			break;
+		default:
+			return -EINVAL;
+		}
+	}
+
+	if (active_low) {
+		priv->led_active_low |= BIT(index);
+		return phy_clear_bits_mmd(phydev, MDIO_MMD_VEND2,
+					  RTL8261CE_VND2_LED_ECR, BIT(index));
+	}
+
+	if (active_high) {
+		priv->led_active_low &= ~BIT(index);
+		return phy_set_bits_mmd(phydev, MDIO_MMD_VEND2,
+					RTL8261CE_VND2_LED_ECR, BIT(index));
+	}
+
+	return -EINVAL;
+}
+
 /* Register the standalone CE driver. The generic Realtek driver also handles
  * other RTL826x parts, but W1700K2 needs the CE-specific SerDes polarity path.
  */
@@ -1081,6 +1299,11 @@ static struct phy_driver rtl8261ce_drvs[] = {
 		.config_aneg = rtl8261ce_config_aneg,
 		.aneg_done = genphy_c45_aneg_done,
 		.read_status = rtl8261ce_read_status,
+		.led_hw_is_supported = rtl8261ce_led_hw_is_supported,
+		.led_hw_control_get = rtl8261ce_led_hw_control_get,
+		.led_hw_control_set = rtl8261ce_led_hw_control_set,
+		.led_brightness_set = rtl8261ce_led_brightness_set,
+		.led_polarity_set = rtl8261ce_led_polarity_set,
 	},
 };
 
