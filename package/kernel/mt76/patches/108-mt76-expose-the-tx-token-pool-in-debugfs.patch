@@ -1,0 +1,96 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] mt76: expose the tx token pool in debugfs
+
+Token exhaustion is invisible from userspace: when the pool runs dry the
+driver simply stops accepting frames, and every symptom appears
+somewhere else. On airoha NPU offload, the NPU's handoff queue reporting
+full forever -- wireless side apparently idle, kernel silent -- looks
+exactly like it, and there is no way to tell the two apart without
+rebuilding the driver. These counters are what ruled it out there: 2-26
+tokens in flight throughout a wedge that turned out to be a ring
+handshake fault.
+
+Print the counters the allocator already maintains, so a leak can be
+watched as it develops rather than inferred after the fact.
+
+Report token_start with them. The counters cover the ids the driver
+allocates, which start above whatever an offload engine has reserved;
+on airoha NPU that leaves the entire 8192-entry hardware pool -- the one
+the offload path actually draws from -- outside the numbers printed
+here. Without the start id the file reads as if it covered everything.
+
+The output is machine-parseable: `type id key=value` records under a
+versioned `# format:` header, covering both token pools, the offload
+state and the NPU rx/tx queue tables.
+---
+--- a/debugfs.c
++++ b/debugfs.c
+@@ -88,6 +88,59 @@
+ 	return 0;
+ }
+ 
++static int mt76_tokens_read(struct seq_file *s, void *data)
++{
++	struct mt76_dev *dev = dev_get_drvdata(s->private);
++	u16 count, wed_count;
++	int i;
++
++	spin_lock_bh(&dev->token_lock);
++	count = dev->token_count;
++	wed_count = dev->wed_token_count;
++	spin_unlock_bh(&dev->token_lock);
++
++	seq_puts(s, "# format: ntb-npu-debugfs/1 file=tokens\n");
++	/* ids below start belong to an offload engine and are not accounted
++	 * in count: on airoha NPU that is the whole hardware pool
++	 */
++	seq_printf(s, "pool tx count=%u size=%u start=%u wed=%u\n",
++		   count, dev->token_size, dev->token_start, wed_count);
++
++	spin_lock_bh(&dev->rx_token_lock);
++	seq_printf(s, "pool rx size=%u\n", dev->rx_token_size);
++	spin_unlock_bh(&dev->rx_token_lock);
++
++	seq_printf(s, "offload npu active=%d\n", mt76_npu_device_active(dev));
++
++	for (i = MT_RXQ_NPU0; i <= MT_RXQ_NPU1; i++) {
++		struct mt76_queue *q = &dev->q_rx[i];
++
++		if (!q->ndesc)
++			continue;
++
++		seq_printf(s,
++			   "queue npu_rx%d ndesc=%d queued=%d head=%d tail=%d\n",
++			   i - MT_RXQ_NPU0, q->ndesc, q->queued, q->head,
++			   q->tail);
++	}
++
++	for (i = 0; i < __MT_MAX_BAND; i++) {
++		struct mt76_phy *phy = dev->phys[i];
++		struct mt76_queue *q;
++
++		if (!phy || !phy->q_tx[0])
++			continue;
++
++		q = phy->q_tx[0];
++		seq_printf(s,
++			   "txq band%d type=%s ndesc=%d queued=%d head=%d tail=%d\n",
++			   i, mt76_queue_is_npu_tx(q) ? "npu" : "dma",
++			   q->ndesc, q->queued, q->head, q->tail);
++	}
++
++	return 0;
++}
++
+ void mt76_seq_puts_array(struct seq_file *file, const char *str,
+ 			 s8 *val, int len)
+ {
+@@ -120,6 +173,8 @@
+ 		debugfs_create_blob("otp", 0400, dir, &dev->otp);
+ 	debugfs_create_devm_seqfile(dev->dev, "rx-queues", dir,
+ 				    mt76_rx_queues_read);
++	debugfs_create_devm_seqfile(dev->dev, "tokens", dir,
++				    mt76_tokens_read);
+ 
+ 	return dir;
+ }

@@ -1,0 +1,91 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] mt7996: expose NPU offload state in debugfs
+
+The driver issues twelve of the forty-five NPU mailbox commands and
+reads back none of the diagnostic ones, so when the offload handoff
+stops delivering there is nothing to look at: the wireless side is idle,
+the kernel is silent, and the only way to see the NPU's own view of the
+pipe is to map its counter block through /dev/mem and decode it against
+vendor sources.
+
+Print the read-only queries the mailbox already answers. The useful one
+is NPU_INFO on ifindex 3 -- the same value mt7996_npu_hw_stop() polls
+for zero before it considers the pipe drained, which makes a wedged
+handoff directly observable instead of inferred.
+
+Kept to ifindexes the driver already uses. Every query is a mailbox
+round trip taken under the device mutex, so this is a diagnostic to read
+when something looks wrong, not a cheap counter to poll in a loop.
+
+WCID_DBG_COUNTER is deliberately left out: its ifindex is presumably a
+station index, that is a guess, and a guess costs a mailbox timeout.
+
+The output is machine-parseable: `type id key=value` records under a
+versioned `# format:` header whose `flags=no-poll` marks the read cost
+as part of the contract.
+---
+--- a/mt7996/debugfs.c
++++ b/mt7996/debugfs.c
+@@ -46,6 +46,53 @@
+ DEFINE_DEBUGFS_ATTRIBUTE(fops_implicit_txbf, mt7996_implicit_txbf_get,
+ 			 mt7996_implicit_txbf_set, "%lld\n");
+ 
++static int mt7996_npu_stats(struct seq_file *s, void *data)
++{
++	static const struct {
++		const char *name;
++		enum airoha_npu_wlan_get_cmd cmd;
++		int ifindex;
++	} queries[] = {
++		{ "version",	WLAN_FUNC_GET_WAIT_NPU_VERSION,		0 },
++		{ "info",	WLAN_FUNC_GET_WAIT_NPU_INFO,		3 },
++		{ "support_map",WLAN_FUNC_GET_WAIT_NPU_SUPPORT_MAP,	0 },
++		{ "counter0",	WLAN_FUNC_GET_WAIT_COUNTER,		0 },
++		{ "counter1",	WLAN_FUNC_GET_WAIT_COUNTER,		1 },
++		{ "dbg0",	WLAN_FUNC_GET_WAIT_DBG_COUNTER,		0 },
++		{ "dbg1",	WLAN_FUNC_GET_WAIT_DBG_COUNTER,		1 },
++	};
++	struct mt7996_dev *dev = dev_get_drvdata(s->private);
++	struct airoha_npu *npu;
++	int i, err;
++
++	mutex_lock(&dev->mt76.mutex);
++
++	npu = rcu_dereference_protected(dev->mt76.mmio.npu, &dev->mt76.mutex);
++	if (!npu) {
++		mutex_unlock(&dev->mt76.mutex);
++		return -ENODEV;
++	}
++
++	seq_puts(s, "# format: ntb-npu-debugfs/1 file=npu_stats flags=no-poll\n");
++
++	for (i = 0; i < ARRAY_SIZE(queries); i++) {
++		u32 val;
++
++		err = mt76_npu_get_msg(npu, queries[i].ifindex, queries[i].cmd,
++				       &val, GFP_KERNEL);
++		if (err)
++			seq_printf(s, "query %s err=%d\n",
++				   queries[i].name, err);
++		else
++			seq_printf(s, "query %s value=0x%08x\n",
++				   queries[i].name, val);
++	}
++
++	mutex_unlock(&dev->mt76.mutex);
++
++	return 0;
++}
++
+ /* test knob of system error recovery */
+ static ssize_t
+ mt7996_sys_recovery_set(struct file *file, const char __user *user_buf,
+@@ -928,6 +975,8 @@
+ 			    &fops_implicit_txbf);
+ 	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
+ 				    mt7996_twt_stats);
++	debugfs_create_devm_seqfile(dev->mt76.dev, "npu_stats", dir,
++				    mt7996_npu_stats);
+ 	debugfs_create_file("rf_regval", 0600, dir, dev, &fops_rf_regval);
+ 	debugfs_create_file("vow_atf", 0600, dir, dev, &fops_vow_atf);
+ 
