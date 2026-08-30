@@ -169,7 +169,7 @@ Signed-off-by: Kenneth Kasilag <kenneth@kasilag.me>
 +boot_tftp=tftpboot $initaddr $bootfile && bootm $initaddr#$bootconf
 +boot_installer=tftpboot $initaddr $installfile && bootm $initaddr#$bootconf
 +bootconf=config-1
-+bootcmd=boot_ubi
++bootcmd=run boot_ubi
 +bootdelay=3
 +bootmenu_confirm_return=askenv - Press ENTER to return to menu ; bootmenu 60
 +bootmenu_default=0
