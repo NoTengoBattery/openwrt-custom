@@ -1,0 +1,28 @@
+#
+# Copyright (C) 2025 OpenWrt.org
+#
+
+[ -e /etc/config/ubootenv ] && exit 0
+
+touch /etc/config/ubootenv
+
+. /lib/uboot-envtools.sh
+. /lib/functions.sh
+
+board=$(board_name)
+
+case "$board" in
+gemtek,w1700k-ubi)
+	# Chainloader is built with CONFIG_ENV_SIZE=0x4000; the generic ubi
+	# default (0x1f000) makes fw_printenv CRC-check the wrong length.
+	. /lib/upgrade/nand.sh
+	envubi=$(nand_find_ubi ubi)
+	ubootenv_add_uci_config "/dev/$(nand_find_volume $envubi ubootenv)" "0x0" "0x4000" "0x1f000" "1"
+	ubootenv_add_uci_config "/dev/$(nand_find_volume $envubi ubootenv2)" "0x0" "0x4000" "0x1f000" "1"
+	;;
+esac
+
+config_load ubootenv
+config_foreach ubootenv_add_app_config
+
+exit 0
