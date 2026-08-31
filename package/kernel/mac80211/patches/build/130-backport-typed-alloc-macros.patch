@@ -1,0 +1,40 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] backports: define the typed allocator macros when missing
+
+net/wireless and net/mac80211 allocate through the kmalloc_obj family
+throughout, but only recent kernels define those macros in slab.h; on
+older ones every call site fails as an implicit function declaration.
+Define the used subset with plain allocator calls, guarded so kernels
+that have the real ones keep them.
+---
+--- a/backport-include/linux/slab.h	2026-08-31 14:13:51.859941908 -0600
++++ b/backport-include/linux/slab.h	2026-08-31 14:15:36.530230107 -0600
+@@ -7,4 +7,28 @@
+ #define kfree_sensitive(x)	kzfree(x)
+ #endif
+ 
++/* the GFP argument is optional upstream; missing means GFP_KERNEL */
++#ifndef kmalloc_obj
++#define __bp_first_gfp(_0, _gfp, ...) (_gfp)
++#define __bp_gfp(...) __bp_first_gfp(0, ##__VA_ARGS__, GFP_KERNEL)
++#define kmalloc_obj(_p, ...) \
++	((typeof(_p) *)kmalloc(sizeof(_p), __bp_gfp(__VA_ARGS__)))
++#define kmalloc_objs(_p, _n, ...) \
++	((typeof(_p) *)kmalloc_array(_n, sizeof(_p), __bp_gfp(__VA_ARGS__)))
++#define kzalloc_obj(_p, ...) \
++	((typeof(_p) *)kzalloc(sizeof(_p), __bp_gfp(__VA_ARGS__)))
++#define kzalloc_objs(_p, _n, ...) \
++	((typeof(_p) *)kcalloc(_n, sizeof(_p), __bp_gfp(__VA_ARGS__)))
++#define kvzalloc_obj(_p, ...) \
++	((typeof(_p) *)kvzalloc(sizeof(_p), __bp_gfp(__VA_ARGS__)))
++#define kvzalloc_objs(_p, _n, ...) \
++	((typeof(_p) *)kvcalloc(_n, sizeof(_p), __bp_gfp(__VA_ARGS__)))
++#define kmalloc_flex(_p, _fam, _n, ...) \
++	((typeof(_p) *)kmalloc(struct_size_t(typeof(_p), _fam, _n), \
++			       __bp_gfp(__VA_ARGS__)))
++#define kzalloc_flex(_p, _fam, _n, ...) \
++	((typeof(_p) *)kzalloc(struct_size_t(typeof(_p), _fam, _n), \
++			       __bp_gfp(__VA_ARGS__)))
++#endif
++
+ #endif /* __BACKPORT_SLAB_H */
