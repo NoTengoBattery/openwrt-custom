@@ -1,0 +1,246 @@
+From: Oever González <software@notengobattery.com>
+Date: Sun, 30 Aug 2026 18:30:00 -0600
+Subject: [PATCH] net: airoha: npu: expose wifi-offload state in debugfs
+
+Three read-only views under debugfs airoha_npu/:
+
+- npu-rings: the wifi-offload TX/RX descriptor ring tables from NPU
+  SRAM (base, size, NPU-owned cpu_idx, host-owned dma_idx). A frozen
+  dma_idx against a moving cpu_idx means the host consumer stopped.
+- npu-counters: the 96-word per-band firmware debug counter blocks,
+  named from the vendor npu.ko dump routine where known.
+- npu-cores: the 8 core program counters; a PC frozen across reads is
+  a hung core.
+
+Rings and core PCs read through the existing regmap; the counter
+window sits below the register window at an address fixed by the
+en7581 MT7996 NPU firmware layout, mapped separately and optional.
+The output is machine-parseable: id is /usr/bin/id
+key=value not found records under a
+versioned  header. Reads are plain MMIO, no mailbox
+traffic.
+---
+--- a/drivers/net/ethernet/airoha/airoha_npu.c
++++ b/drivers/net/ethernet/airoha/airoha_npu.c
+@@ -5,12 +5,14 @@
+  */
+ 
+ #include <linux/devcoredump.h>
++#include <linux/debugfs.h>
+ #include <linux/firmware.h>
+ #include <linux/platform_device.h>
+ #include <linux/of_net.h>
+ #include <linux/of_platform.h>
+ #include <linux/of_reserved_mem.h>
+ #include <linux/regmap.h>
++#include <linux/seq_file.h>
+ 
+ #include "airoha_eth.h"
+ 
+@@ -724,6 +726,162 @@
+ 	.disable_locking	= true,
+ };
+ 
++/* WiFi-offload debugfs. Ring tables and core PCs sit inside the NPU
++ * register window (readable through the regmap); the firmware debug
++ * counters sit below it, at an address fixed by the en7581 MT7996 NPU
++ * firmware layout.
++ */
++#define NPU_WLAN_TX_RING_OFFSET		0x30d080
++#define NPU_WLAN_RX_RING_OFFSET		0x30d180
++#define NPU_WLAN_RING_MAX		16
++#define NPU_WLAN_CORE_PC_OFFSET		0x305000
++#define NPU_WLAN_CNT_PHYS		0x1e8776e0
++#define NPU_WLAN_CNT_BAND_STRIDE	0x400
++#define NPU_WLAN_CNT_WORDS		96
++
++/* Names recovered from the vendor npu.ko counter dump routine. */
++static const char * const airoha_npu_wlan_cnt_names[NPU_WLAN_CNT_WORDS] = {
++	[0] = "GET_BUFID_FAIL",
++	[1] = "GET_PKT_WHILE",
++	[2] = "RX_DESC_DDONE",
++	[3] = "ALL_GET_PKT",
++	[4] = "DROP_PACKETS",
++	[5] = "ENQ_DEQ_WHILE",
++	[6] = "ENQ_SRAM",
++	[7] = "ENQ_SRAM_FULL",
++	[8] = "ENQ_SRAM_FAIL",
++	[9] = "DEQ_SRAM",
++	[10] = "DEQ_SRAM_FAIL_BUFID",
++	[11] = "DEQ_SRAM_FAIL_LEN",
++	[12] = "TO_HOSTAPD",
++	[13] = "BA1_IN_ORDER",
++	[14] = "BA2_DUP_PACKET",
++	[15] = "BA3_OLD_PACKET",
++	[16] = "BA4_IN_WINDOW",
++	[17] = "BA5_SURPASS_WIN",
++	[18] = "BA_AMSDU",
++	[19] = "NOT_AMPDU",
++	[20] = "BA_NO_MEM",
++	[21] = "TO_TDMA",
++	[27] = "HOST_APD_ERROR",
++	[29] = "SCATTER_CNT_MORE1",
++	[30] = "BIGGER_PACKET",
++	[31] = "ENQ_BIGPKT_TOSRAM_FAIL",
++	[32] = "SCATTER_PKT_ONE_BUFID",
++	[33] = "GET_BUFID_FOR_BIGPKT_FAIL",
++	[34] = "BIGPKT_TO_HOSTADPT_ERROR",
++	[35] = "API_HOSTADPT_SEND",
++	[36] = "ENQ_BIGPKT_SRAM_FULL",
++	[37] = "ENQ_BIGPKT_SRAM",
++	[38] = "NO_BIGPKT",
++	[39] = "CHECK_BIGPKT",
++	[40] = "CHECK_BIGPKT2",
++	[42] = "CHECK_BIGPKT_ISLAST",
++	[43] = "CHECK_BIGPKT_IDX_FAIL",
++	[44] = "CHECK_BIGPKT_CNT_FAIL",
++	[45] = "CHECK_BIGPKT_FAIL",
++	[46] = "CHECK_BIGPKT_OVER_RETRY",
++	[47] = "BIGPKT_TO_HOSTAPD",
++	[48] = "BIGPKT_DESC_FREE",
++	[49] = "BA_AMSDU_MISS",
++	[50] = "BA_TIMEOUT_FLUSH100",
++	[51] = "BA_TIMEOUT_FLUSH250",
++	[52] = "BA_ENQ_DUP_SEQ",
++	[53] = "BA_REORDER_NODE_FREE",
++	[54] = "BA_REORDER_NODE_ALLOC_FAIL",
++	[55] = "BA_REORDER_NODE_ALLOC",
++	[56] = "BA_REORDER_NODE_ALLOC_DRAM",
++	[57] = "BA_ENQ_QLEN_ERROR",
++	[58] = "BA_WCID_ERROR",
++	[59] = "HOSTADPT_API_Q_FULL",
++	[63] = "TDMA_TXDESC_FULL",
++	[65] = "RX_G4_PKT_NO_SN",
++	[66] = "RX_PIPE_Q_FULL",
++	[67] = "RX_PIPE_Q3_Q4_FULL",
++	[68] = "PIPE_Q3_ENQ",
++	[69] = "PIPE_Q3_DEQ",
++	[70] = "PIPE_Q4_ENQ",
++	[71] = "PIPE_Q4_DEQ",
++};
++
++static int airoha_npu_wlan_rings_show(struct seq_file *s, void *data)
++{
++	static const struct {
++		const char *name;
++		u32 off;
++	} tbl[] = {
++		{ "tx", NPU_WLAN_TX_RING_OFFSET },
++		{ "rx", NPU_WLAN_RX_RING_OFFSET },
++	};
++	struct airoha_npu *npu = dev_get_drvdata(s->private);
++	int i, n;
++
++	seq_puts(s, "# format: airoha-npu-debugfs/1 file=npu-rings\n");
++	for (i = 0; i < ARRAY_SIZE(tbl); i++) {
++		for (n = 0; n < NPU_WLAN_RING_MAX; n++) {
++			u32 off = tbl[i].off + n * 0x10;
++			u32 base, size, cpu, dma;
++
++			if (regmap_read(npu->regmap, off, &base) ||
++			    regmap_read(npu->regmap, off + 0x4, &size) ||
++			    regmap_read(npu->regmap, off + 0x8, &cpu) ||
++			    regmap_read(npu->regmap, off + 0xc, &dma))
++				return -EIO;
++
++			/* an unconfigured slot, not an error state */
++			if (!base || !size)
++				continue;
++
++			seq_printf(s,
++				   "ring %s%d base=0x%08x size=%u cpu_idx=%u dma_idx=%u\n",
++				   tbl[i].name, n, base, size, cpu, dma);
++		}
++	}
++
++	return 0;
++}
++
++static int airoha_npu_wlan_cores_show(struct seq_file *s, void *data)
++{
++	struct airoha_npu *npu = dev_get_drvdata(s->private);
++	int i;
++
++	seq_puts(s, "# format: airoha-npu-debugfs/1 file=npu-cores\n");
++	for (i = 0; i < NPU_NUM_CORES; i++) {
++		u32 pc;
++
++		if (regmap_read(npu->regmap,
++				NPU_WLAN_CORE_PC_OFFSET + i * 0x100, &pc))
++			return -EIO;
++
++		seq_printf(s, "core %d pc=0x%08x\n", i, pc);
++	}
++
++	return 0;
++}
++
++static int airoha_npu_wlan_counters_show(struct seq_file *s, void *data)
++{
++	struct airoha_npu *npu = dev_get_drvdata(s->private);
++	int i;
++
++	if (!npu->wlan_cnt)
++		return -ENODEV;
++
++	seq_puts(s, "# format: airoha-npu-debugfs/1 file=npu-counters\n");
++	for (i = 0; i < NPU_WLAN_CNT_WORDS; i++) {
++		const char *name = airoha_npu_wlan_cnt_names[i];
++
++		seq_printf(s, "counter w%02d name=%s band0=%u band1=%u\n",
++			   i, name ? name : "-",
++			   readl(npu->wlan_cnt + i * 4),
++			   readl(npu->wlan_cnt + NPU_WLAN_CNT_BAND_STRIDE +
++				 i * 4));
++	}
++
++	return 0;
++}
++
+ static int airoha_npu_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -848,6 +1006,21 @@
+ 
+ 	platform_set_drvdata(pdev, npu);
+ 
++	/* The counter window is not part of the DT node; a failed map only
++	 * disables the counters view.
++	 */
++	npu->wlan_cnt = devm_ioremap(dev, NPU_WLAN_CNT_PHYS,
++				     NPU_WLAN_CNT_BAND_STRIDE +
++				     NPU_WLAN_CNT_WORDS * 4);
++
++	npu->debugfs_dir = debugfs_create_dir("airoha_npu", NULL);
++	debugfs_create_devm_seqfile(dev, "npu-rings", npu->debugfs_dir,
++				    airoha_npu_wlan_rings_show);
++	debugfs_create_devm_seqfile(dev, "npu-counters", npu->debugfs_dir,
++				    airoha_npu_wlan_counters_show);
++	debugfs_create_devm_seqfile(dev, "npu-cores", npu->debugfs_dir,
++				    airoha_npu_wlan_cores_show);
++
+ 	return 0;
+ }
+ 
+@@ -856,6 +1029,8 @@
+ 	struct airoha_npu *npu = platform_get_drvdata(pdev);
+ 	int i;
+ 
++	debugfs_remove_recursive(npu->debugfs_dir);
++
+ 	for (i = 0; i < ARRAY_SIZE(npu->cores); i++)
+ 		cancel_work_sync(&npu->cores[i].wdt_work);
+ }
+--- a/include/linux/soc/airoha/airoha_offload.h
++++ b/include/linux/soc/airoha/airoha_offload.h
+@@ -195,6 +195,10 @@
+ 
+ 	struct airoha_foe_stats __iomem *stats;
+ 
++	/* en7581 MT7996 fw debug counter window plus the debugfs views */
++	void __iomem *wlan_cnt;
++	struct dentry *debugfs_dir;
++
+ 	struct {
+ 		int (*ppe_init)(struct airoha_npu *npu);
+ 		int (*ppe_deinit)(struct airoha_npu *npu);
