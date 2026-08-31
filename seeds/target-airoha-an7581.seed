@@ -14,8 +14,9 @@ CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi=y
 #   make defconfig && make
 
 # Hardware enablement is per-device: Device/gemtek_w1700k-ubi DEVICE_PACKAGES
-# in image/an7581.mk.
-CONFIG_TARGET_DEVICE_PACKAGES_airoha_an7581_DEVICE_gemtek_w1700k-ubi="python3"
+# in image/an7581.mk. Software rides this line instead (=m in
+# config-available.seed makes each name resolvable).
+CONFIG_TARGET_DEVICE_PACKAGES_airoha_an7581_DEVICE_gemtek_w1700k-ubi="luci-app-airoha-flowsense luci-app-airoha-npu luci-app-airoha-recovery luci-app-mlo luci-app-w1700k-fancontrol luci-app-wifi7 python3"
 
 # luci-app-airoha-npu needs the busybox devmem applet (config-features.seed).
 CONFIG_KERNEL_DEVMEM=y
