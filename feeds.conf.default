@@ -1,5 +1,13 @@
-src-git packages https://git.openwrt.org/feed/packages.git^5caa62e0bc9f7fb9b0c12a23267bceb7724214dd
-src-git luci https://git.openwrt.org/project/luci.git^128a7812f4be233c5dd7f7466f534fd888785caf
-src-git routing https://git.openwrt.org/feed/routing.git^3d7d0dc7fa43d3eb09498417407e95a6552e5312
-src-git telephony https://git.openwrt.org/feed/telephony.git^2618106d5846a4a542fdf5809f0d3ed228ce439b
+src-link notengobattery_feed /home/builder/openwrt/feed
+src-git mwan3 https://github.com/dl12345/mwan3.git^cdd4fc56f4de9ccf56d40d6dc04a5b6a4e5a0ae6
+src-git luci_mwan3 https://github.com/dl12345/luci-app-mwan3.git^1e8513a69cff32da3dd82c342151cdb4a991c2b7
+src-git luci_modemdata https://github.com/4IceG/luci-app-modemdata.git^61dbf43e3373cbd840a9eaa2f4c29f2ead1f5d8a
+src-git qfirehose https://github.com/4IceG/luci-app-qfirehose.git^a32f80cac92348d292a87533a3daa7cdd99fce2e
+src-git modemdata https://github.com/obsy/modemdata.git^db444c561bda72a9c681d2f90030e7080a389b38
+src-git smsmanager https://github.com/4IceG/luci-app-sms-manager.git^0d31d8cca5eb2ed258ce354c090c25800dc76732
+
+src-git packages https://github.com/openwrt/packages.git^5caa62e0bc9f7fb9b0c12a23267bceb7724214dd
+src-git luci https://github.com/openwrt/luci.git^128a7812f4be233c5dd7f7466f534fd888785caf
+src-git routing https://github.com/openwrt/routing.git^3d7d0dc7fa43d3eb09498417407e95a6552e5312
+src-git telephony https://github.com/openwrt/telephony.git^2618106d5846a4a542fdf5809f0d3ed228ce439b
 src-git video https://github.com/openwrt/video.git^094bf58da6682f895255a35a84349a79dab4bf95
