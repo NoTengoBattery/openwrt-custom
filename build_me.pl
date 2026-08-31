@@ -121,8 +121,6 @@ open( KERNEL_SUBTARGET_SEED, "<", glob($fKernelSubtargetSeed) )
   or die qq(Could not open file '$fKernelSubtargetSeed' (KERNEL_SUBTARGET_SEED): $!);
 open( CONFIG_SEED, ">", glob($fConfigSeed) )
   or die qq(Could not open file '$fConfigSeed' (CONFIG_SEED): $!);
-open( CONFIG, ">", glob($fConfig) )
-  or die qq(Could not open file '$fConfig' (CONFIG): $!);
 # Drop any seed text a previous run appended before appending again.
 if ( -f $kconfg ) {
     system( 'git', 'checkout', '--', $kconfg ) == 0
@@ -130,21 +128,6 @@ if ( -f $kconfg ) {
 }
 open( KCONFIG, ">>", glob($kconfg) )
   or die qq(Could not open file '$kconfg' (KCONFIG): $!);
-
-printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_BUG_URL",     glob($issuesURL) );
-printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_DIST",        DIST );
-printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_HOME_URL",    glob($releaseURL) );
-printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_NUMBER",      VERSION );
-printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_REPO",        glob($downloadURL) );
-printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_SUPPORT_URL", glob($supportURL) );
-print( CONFIG <COMMON_SEED>,    "\n" );
-print( CONFIG <FEATURES_SEED>,  "\n" );
-print( CONFIG <AVAILABLE_SEED>, "\n" );
-print( CONFIG <KERNEL_SEED>,    "\n" );
-print( CONFIG <TARGET_SEED>,    "\n" );
-print( CONFIG <SUBTARGET_SEED>, "\n" );
-print( CONFIG <PACKAGE_SEED>,   "\n" );
-close(CONFIG);
 
 # All three kernel seeds go to the single reconfig target. Read each handle
 # into a list first: a filehandle in list context is drained by one read, so
@@ -164,6 +147,24 @@ system("./scripts/feeds update -a");
 system("rsync -a --delete --exclude='.git' feeds/mwan3/ feeds/packages/net/mwan3/");
 system("rsync -a --delete --exclude='.git' feeds/luci_mwan3/ feeds/luci/applications/luci-app-mwan3/");
 system("./scripts/feeds install -a");
+# scripts/feeds runs its own silent defconfig, which deletes any seed line
+# whose package is not yet installed — so the seeds go in only after install.
+open( CONFIG, ">", glob($fConfig) )
+  or die qq(Could not open file '$fConfig' (CONFIG): $!);
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_BUG_URL",     glob($issuesURL) );
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_DIST",        DIST );
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_HOME_URL",    glob($releaseURL) );
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_NUMBER",      VERSION );
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_REPO",        glob($downloadURL) );
+printf( CONFIG "%s=\"%s\"\n", "CONFIG_VERSION_SUPPORT_URL", glob($supportURL) );
+print( CONFIG <COMMON_SEED>,    "\n" );
+print( CONFIG <FEATURES_SEED>,  "\n" );
+print( CONFIG <AVAILABLE_SEED>, "\n" );
+print( CONFIG <KERNEL_SEED>,    "\n" );
+print( CONFIG <TARGET_SEED>,    "\n" );
+print( CONFIG <SUBTARGET_SEED>, "\n" );
+print( CONFIG <PACKAGE_SEED>,   "\n" );
+close(CONFIG);
 system("rm -rf .config.old");
 system("make -j32 defconfig");
 system("rm -rf .config.old");
