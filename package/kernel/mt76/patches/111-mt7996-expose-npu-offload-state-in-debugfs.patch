@@ -20,9 +20,13 @@ when something looks wrong, not a cheap counter to poll in a loop.
 WCID_DBG_COUNTER is deliberately left out: its ifindex is presumably a
 station index, that is a guess, and a guess costs a mailbox timeout.
 
+The output is machine-parseable: `type id key=value` records under a
+versioned `# format:` header whose `flags=no-poll` marks the read cost
+as part of the contract.
+---
 --- a/mt7996/debugfs.c
 +++ b/mt7996/debugfs.c
-@@ -46,6 +46,49 @@
+@@ -46,6 +46,53 @@
  DEFINE_DEBUGFS_ATTRIBUTE(fops_implicit_txbf, mt7996_implicit_txbf_get,
  			 mt7996_implicit_txbf_set, "%lld\n");
  
@@ -53,15 +57,19 @@ station index, that is a guess, and a guess costs a mailbox timeout.
 +		return -ENODEV;
 +	}
 +
++	seq_puts(s, "# format: ntb-npu-debugfs/1 file=npu_stats flags=no-poll\n");
++
 +	for (i = 0; i < ARRAY_SIZE(queries); i++) {
 +		u32 val;
 +
 +		err = mt76_npu_get_msg(npu, queries[i].ifindex, queries[i].cmd,
 +				       &val, GFP_KERNEL);
 +		if (err)
-+			seq_printf(s, "%-12s err %d\n", queries[i].name, err);
++			seq_printf(s, "query %s err=%d\n",
++				   queries[i].name, err);
 +		else
-+			seq_printf(s, "%-12s 0x%08x\n", queries[i].name, val);
++			seq_printf(s, "query %s value=0x%08x\n",
++				   queries[i].name, val);
 +	}
 +
 +	mutex_unlock(&dev->mt76.mutex);
@@ -72,7 +80,7 @@ station index, that is a guess, and a guess costs a mailbox timeout.
  /* test knob of system error recovery */
  static ssize_t
  mt7996_sys_recovery_set(struct file *file, const char __user *user_buf,
-@@ -928,6 +971,8 @@
+@@ -928,6 +975,8 @@
  			    &fops_implicit_txbf);
  	debugfs_create_devm_seqfile(dev->mt76.dev, "twt_stats", dir,
  				    mt7996_twt_stats);
