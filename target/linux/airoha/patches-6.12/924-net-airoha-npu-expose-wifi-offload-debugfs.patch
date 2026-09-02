@@ -37,7 +37,7 @@ traffic.
  
  #include "airoha_eth.h"
  
-@@ -724,6 +726,162 @@
+@@ -724,6 +726,194 @@
  	.disable_locking	= true,
  };
  
@@ -117,6 +117,33 @@ traffic.
 +	[69] = "PIPE_Q3_DEQ",
 +	[70] = "PIPE_Q4_ENQ",
 +	[71] = "PIPE_Q4_DEQ",
++	[72] = "ENQ_PKT_TO_SLOWPATH_CASE1",
++	[73] = "ENQ_PKT_TO_SLOWPATH_CASE2",
++	[74] = "ENQ_PKT_TO_SLOWPATH_CASE3",
++	[75] = "ENQ_PIPELINE_PKT_CNT",
++	[76] = "DEQ_PIPELINE_PKT_CNT",
++	[77] = "TDMA_TXRING_SEND",
++	[78] = "RRO_EXCEPTION",
++	/* w79-82 are the band0 half of a per-band-overloaded slot; band1
++	 * counts something else there, named in _b1 below.
++	 */
++	[79] = "MSDU_PG_2G_PKT",
++	[80] = "MSDU_PG_5G_PKT",
++	[81] = "MSDU_PG_6G_PKT",
++	[82] = "MSDU_PG_READ_FAIL",
++};
++
++/* For a handful of words the two band regions do not measure the same
++ * thing: the tail of band0 holds RRO MSDU-page counters, the tail of
++ * band1 holds RRO indication-command counters. Where an entry exists
++ * here it is band1's true name, emitted as band1_name= alongside the
++ * shared name=.
++ */
++static const char * const airoha_npu_wlan_cnt_names_b1[NPU_WLAN_CNT_WORDS] = {
++	[79] = "IND_CMD_WHILE",
++	[80] = "IND_CMD_DESC",
++	[81] = "IND_CMD_SIG_FAIL",
++	[82] = "OLD_DUP_PKT",
 +};
 +
 +static int airoha_npu_wlan_rings_show(struct seq_file *s, void *data)
@@ -186,12 +213,17 @@ traffic.
 +	seq_puts(s, "# format: airoha-npu-debugfs/1 file=npu-counters\n");
 +	for (i = 0; i < NPU_WLAN_CNT_WORDS; i++) {
 +		const char *name = airoha_npu_wlan_cnt_names[i];
++		const char *name_b1 = airoha_npu_wlan_cnt_names_b1[i];
 +
-+		seq_printf(s, "counter w%02d name=%s band0=%u band1=%u\n",
++		seq_printf(s, "counter w%02d name=%s band0=%u band1=%u",
 +			   i, name ? name : "-",
 +			   readl(npu->wlan_cnt + i * 4),
 +			   readl(npu->wlan_cnt + NPU_WLAN_CNT_BAND_STRIDE +
 +				 i * 4));
++		/* band1 measures a different counter than band0 here */
++		if (name_b1)
++			seq_printf(s, " band1_name=%s", name_b1);
++		seq_putc(s, '\n');
 +	}
 +
 +	return 0;
@@ -200,7 +232,7 @@ traffic.
  static int airoha_npu_probe(struct platform_device *pdev)
  {
  	struct device *dev = &pdev->dev;
-@@ -848,6 +1006,21 @@
+@@ -848,6 +1038,21 @@
  
  	platform_set_drvdata(pdev, npu);
  
@@ -222,7 +254,7 @@ traffic.
  	return 0;
  }
  
-@@ -856,6 +1029,8 @@
+@@ -856,6 +1061,8 @@
  	struct airoha_npu *npu = platform_get_drvdata(pdev);
  	int i;
  
