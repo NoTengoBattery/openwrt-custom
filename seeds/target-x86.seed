@@ -33,6 +33,12 @@ CONFIG_PACKAGE_efivar=y
 
 # Also promotes minidlna (config-available.seed, =m) via its +minidlna select.
 CONFIG_PACKAGE_luci-app-minidlna=y
+# Cellular modem suite promoted from config-available.seed (=m).
+CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y
+CONFIG_PACKAGE_luci-app-modemdata=y
+CONFIG_PACKAGE_luci-app-qfirehose=y
+CONFIG_PACKAGE_luci-app-sms-manager=y
+CONFIG_PACKAGE_luci-proto-qmi=y
 # Promoted from config-available.seed (=m): baked in on this target only.
 CONFIG_PACKAGE_luci-app-samba4=y
 CONFIG_PACKAGE_luci-app-smartdns=y

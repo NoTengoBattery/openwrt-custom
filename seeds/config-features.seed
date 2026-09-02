@@ -33,18 +33,13 @@ CONFIG_PACKAGE_bridger=y
 CONFIG_PACKAGE_kmod-sched-act-vlan=y
 CONFIG_PACKAGE_kmod-sched-flower=y
 
-# Cellular modem suite — the zbtlink is a CPE host, not optional.
-CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y
+# USB net/serial drivers; the cellular modem suite is in config-available.seed.
 CONFIG_PACKAGE_kmod-usb-net-ipheth=y
 CONFIG_PACKAGE_kmod-usb-net=y
 CONFIG_PACKAGE_kmod-usb-serial-ftdi=y
 CONFIG_PACKAGE_kmod-usb-serial-option=y
 CONFIG_PACKAGE_kmod-usb-serial=y
 CONFIG_PACKAGE_kmod-usbmon=y
-CONFIG_PACKAGE_luci-app-modemdata=y
-CONFIG_PACKAGE_luci-app-qfirehose=y
-CONFIG_PACKAGE_luci-app-sms-manager=y
-CONFIG_PACKAGE_luci-proto-qmi=y
 CONFIG_PACKAGE_unzip=y
 
 CONFIG_PACKAGE_chattr=y

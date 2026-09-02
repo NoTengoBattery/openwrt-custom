@@ -13,3 +13,10 @@ CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_hiveton_h5000m="python3"
 
 # The wireless stack and mwan3 are declared at family and cross-target
 # scope respectively; see target-mediatek.seed and config-features.seed.
+
+# Cellular modem suite promoted from config-available.seed (=m).
+CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=y
+CONFIG_PACKAGE_luci-app-modemdata=y
+CONFIG_PACKAGE_luci-app-qfirehose=y
+CONFIG_PACKAGE_luci-app-sms-manager=y
+CONFIG_PACKAGE_luci-proto-qmi=y

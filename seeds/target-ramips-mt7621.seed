@@ -18,8 +18,9 @@ CONFIG_VERSION_MANUFACTURER="MediaTek"
 CONFIG_VERSION_PRODUCT="MT7621"
 
 # Packages for every specific MT7621 devices
-CONFIG_TARGET_DEVICE_PACKAGES_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-16m=""
-CONFIG_TARGET_DEVICE_PACKAGES_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-32m=""
+# Cellular modem suite: the wg3526 is a CPE host.
+CONFIG_TARGET_DEVICE_PACKAGES_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-16m="kmod-usb-net-cdc-mbim luci-app-modemdata luci-app-qfirehose luci-app-sms-manager luci-proto-qmi"
+CONFIG_TARGET_DEVICE_PACKAGES_ramips_mt7621_DEVICE_zbtlink_zbt-wg3526-32m="kmod-usb-net-cdc-mbim luci-app-modemdata luci-app-qfirehose luci-app-sms-manager luci-proto-qmi"
 
 # The wireless stack and mwan3 are declared at family and cross-target
 # scope respectively; see target-ramips.seed and config-features.seed.

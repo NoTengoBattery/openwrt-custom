@@ -60,6 +60,7 @@ Two buckets sit outside the stack and outrank everything, because
 | Package | Broad scope | Promoted to | Where |
 |---|---|---|---|
 | `luci-app-samba4` | `config-available.seed` `=m` | `=y` | `target-x86.seed`, annotated |
+| modem suite (`kmod-usb-net-cdc-mbim`, `luci-app-modemdata`, `luci-app-qfirehose`, `luci-app-sms-manager`, `luci-proto-qmi`) | `config-available.seed` `=m` | `=y` | `target-x86.seed` and `target-mediatek-filogic.seed`, annotated; per-device on the wg3526 via `DEVICE_PACKAGES` in `target-ramips-mt7621.seed` |
 | `minidlna` | `config-available.seed` `=m` | `=y` *implicitly* | `target-x86.seed` selects `luci-app-minidlna=y`, whose `+minidlna` dependency becomes a `select`. Deliberately left implicit — there is no seed line for it. |
 
 ## Gotchas

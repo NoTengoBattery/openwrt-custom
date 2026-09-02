@@ -17,6 +17,12 @@ CONFIG_PACKAGE_lm-sensors-detect=m
 CONFIG_PACKAGE_luci-app-advanced-reboot=m
 CONFIG_PACKAGE_luci-app-nlbwmon=m
 CONFIG_PACKAGE_luci-app-samba4=m
+# Cellular modem suite; =y on x86 and filogic, per-device on the wg3526.
+CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=m
+CONFIG_PACKAGE_luci-app-modemdata=m
+CONFIG_PACKAGE_luci-app-qfirehose=m
+CONFIG_PACKAGE_luci-app-sms-manager=m
+CONFIG_PACKAGE_luci-proto-qmi=m
 # =m only publishes them; the W1700K DEVICE_PACKAGES line in
 # target-airoha-an7581.seed bakes them into the AP rootfs — without these
 # lines that line silently resolves to nothing.
