@@ -26,6 +26,11 @@ CONFIG_TRANSPARENT_HUGEPAGE=y
 CONFIG_X86_INTEL_PSTATE=y
 CONFIG_X86_MCE_INTEL=y
 
+# Non-default choice, so it survives the regen's minimize-to-default pass.
+# (VMSCAPE, a default-y NEW symbol, lives in generic/config-6.12 instead —
+# a seed line for it would be stripped and the abort hook would fire.)
+CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y
+
 CONFIG_FRAME_WARN=1024
 
 CONFIG_DEFAULT_HOSTNAME="x86"
