@@ -1,0 +1,49 @@
+From: Oever Gonzalez <software@notengobattery.com>
+Subject: [PATCH] mt7996: poll per-station firmware stats under the NPU too
+
+The admission and MSDU counters are only fetched when WED is active, so
+with the NPU offload every station's tx/rx bytes and packets freeze at
+the host-visible share and look idle to hostapd, usteer and LuCI. The
+same gate hides the fetched values in sta_statistics; open both, but keep
+mac80211's byte counters when the firmware returns none (the NPU firmware
+answers the MSDU count query and zeroes for admission bytes).
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -2993,7 +2993,9 @@
+ 		mt7996_mac_update_stats(phy);
+ 
+ 		mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_RATE);
+-		if (mtk_wed_device_active(&phy->dev->mt76.mmio.wed)) {
++		/* offloaded frames never reach the host; the firmware counts them */
++		if (mtk_wed_device_active(&phy->dev->mt76.mmio.wed) ||
++		    mt76_npu_device_active(&phy->dev->mt76)) {
+ 			mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_ADM_STAT);
+ 			mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_MSDU_COUNT);
+ 		}
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -1925,12 +1925,18 @@
+ 		-(s8)ewma_avg_signal_read(&msta_link->avg_ack_signal);
+ 	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_ACK_SIGNAL_AVG);
+ 
+-	if (mtk_wed_device_active(&dev->mt76.mmio.wed)) {
+-		sinfo->tx_bytes = msta_link->wcid.stats.tx_bytes;
+-		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BYTES64);
++	if (mtk_wed_device_active(&dev->mt76.mmio.wed) ||
++	    mt76_npu_device_active(&dev->mt76)) {
++		/* the NPU firmware reports MSDU counts but no admission bytes */
++		if (msta_link->wcid.stats.tx_bytes) {
++			sinfo->tx_bytes = msta_link->wcid.stats.tx_bytes;
++			sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BYTES64);
++		}
+ 
+-		sinfo->rx_bytes = msta_link->wcid.stats.rx_bytes;
+-		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_RX_BYTES64);
++		if (msta_link->wcid.stats.rx_bytes) {
++			sinfo->rx_bytes = msta_link->wcid.stats.rx_bytes;
++			sinfo->filled |= BIT_ULL(NL80211_STA_INFO_RX_BYTES64);
++		}
+ 
+ 		sinfo->tx_packets = msta_link->wcid.stats.tx_packets;
+ 		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_PACKETS);
