@@ -143,6 +143,22 @@ close(KCONFIG);
 
 # Wipe all cached build metadata before touching the feeds.
 system("rm -rf feeds/*.tmp feeds/*.index feeds/*.targetindex tmp/info tmp/.packageinfo tmp/.targetinfo");
+# scripts/feeds honors a ^commit only when it clones; an existing checkout is
+# just pulled --ff-only, a no-op on its detached HEAD, so the pin is enforced here.
+open( FEEDS_CONF, "<", "feeds.conf.default" )
+  or die qq(Could not open file 'feeds.conf.default' (FEEDS_CONF): $!);
+while ( my $feed = <FEEDS_CONF> ) {
+    next unless $feed =~ /^src-git(?:-full)?\s+(\S+)\s+\S+\^([0-9a-f]{7,40})\s*$/;
+    my ( $name, $pin ) = ( $1, $2 );
+    next unless -e "feeds/$name/.git";
+    chomp( my $head = `git -C feeds/$name rev-parse HEAD 2>/dev/null` );
+    next if index( $head, $pin ) == 0;
+    print qq(Re-pinning feed '$name': $head -> $pin\n);
+    system( 'git', '-C', "feeds/$name", 'fetch', '--depth=1', 'origin', $pin ) == 0
+      and system( 'git', '-C', "feeds/$name", '-c', 'advice.detachedHead=false', 'checkout', '-q', $pin ) == 0
+      or die qq(Feed '$name' could not be pinned to $pin\n);
+}
+close(FEEDS_CONF);
 system("./scripts/feeds update -a");
 system("rsync -a --delete --exclude='.git' feeds/mwan3/ feeds/packages/net/mwan3/");
 system("rsync -a --delete --exclude='.git' feeds/luci_mwan3/ feeds/luci/applications/luci-app-mwan3/");
