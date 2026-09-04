@@ -30,6 +30,7 @@ public-key.pem
 *#
 .emacs.desktop*
 TAGS*~
+config.seed
 git-src
 .project
 .cproject

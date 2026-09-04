@@ -1,0 +1,32 @@
+# Customization of build config for all targets
+
+CONFIG_BUSYBOX_CUSTOM=y
+CONFIG_DEVEL=y
+CONFIG_IMAGEOPT=y
+CONFIG_TARGET_OPTIONS=y
+CONFIG_TOOLCHAINOPTS=y
+CONFIG_VERSIONOPT=y
+
+CONFIG_BINUTILS_USE_VERSION_2_45=y
+# Included inside the Docker container
+CONFIG_BPF_TOOLCHAIN_HOST=y
+CONFIG_CCACHE=y
+CONFIG_GCC_USE_GRAPHITE=y
+CONFIG_GCC_USE_VERSION_15=y
+CONFIG_USE_GC_SECTIONS=y
+CONFIG_USE_LTO=y
+CONFIG_USE_MOLD=y
+
+CONFIG_TARGET_INITRAMFS_COMPRESSION_ZSTD=y
+CONFIG_TARGET_ROOTFS_TARGZ=y
+
+# Inert on x86-64 (single-profile)
+CONFIG_TARGET_PER_DEVICE_ROOTFS=y
+
+# Common packages to build/install
+CONFIG_PACKAGE_notengobattery-defaults=y
+CONFIG_PACKAGE_notengobattery-preboot=y
+CONFIG_PACKAGE_notengobattery-scripts=y
+# Not a typo: disables the inclusion of all shadow tools
+# avoiding conflicts with busybox
+CONFIG_shadow-all=n

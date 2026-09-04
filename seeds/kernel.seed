@@ -1,0 +1,5 @@
+# Customization of kernel build config for all targets
+
+CONFIG_KERNEL_BUILD_DOMAIN="notengobattery.com"
+CONFIG_KERNEL_BUILD_USER="software"
+CONFIG_KERNEL_CC_OPTIMIZE_FOR_PERFORMANCE=y

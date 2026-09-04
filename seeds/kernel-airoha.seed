@@ -1,0 +1,5 @@
+# Customization of kernel config for Airoha
+
+CONFIG_CMDLINE=""
+
+CONFIG_DEFAULT_HOSTNAME="Airoha"

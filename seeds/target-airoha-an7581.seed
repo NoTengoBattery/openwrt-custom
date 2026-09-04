@@ -1,0 +1,19 @@
+# Customization of build config for Airoha (AN7581)
+
+CONFIG_TARGET_airoha_an7581=y
+CONFIG_TARGET_OPTIMIZATION="-O2 -pipe -mcpu=cortex-a53"
+CONFIG_KERNEL_CFLAGS="-pipe -march=armv8-a -mtune=cortex-a53"
+
+# All supported devices
+CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi=y
+
+# Can't seed the installer profile too: build_me.pl empties bin/targets, and
+# it embeds the image the line above produces. Second pass, after that copy:
+#   sed -i '/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi=y$/d' .config
+#   echo 'CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_gemtek_w1700k-ubi-installer=y' >> .config
+#   make defconfig && make
+
+CONFIG_TARGET_DEVICE_PACKAGES_airoha_an7581_DEVICE_gemtek_w1700k-ubi="luci-app-airoha-flowsense luci-app-airoha-npu luci-app-airoha-recovery luci-app-mlo luci-app-w1700k-fancontrol luci-app-wifi7 python3"
+
+# DEVMEM should be retired!
+CONFIG_KERNEL_DEVMEM=y

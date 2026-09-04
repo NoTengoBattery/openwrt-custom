@@ -1,0 +1,6 @@
+# Customization of kernel config for MT7621
+
+CONFIG_CMDLINE=""
+
+CONFIG_DEFAULT_HOSTNAME="MT7621"
+

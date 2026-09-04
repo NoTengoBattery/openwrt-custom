@@ -1,0 +1,5 @@
+# Customization of kernel config for Filogic
+
+CONFIG_CMDLINE=""
+
+CONFIG_DEFAULT_HOSTNAME="Filogic"

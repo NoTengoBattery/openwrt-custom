@@ -1,0 +1,21 @@
+# Customization of kernel config for Airoha (AN7581)
+
+CONFIG_CMDLINE=""
+
+# Depends on I2C, which is only enabled by a kmod after kernel_oldconfig runs.
+# CONFIG_SND_SOC_AN7581 is not set
+
+CONFIG_DEFAULT_HOSTNAME="AN7581"
+
+# Built-in: as a module, THERMAL_HWMON can't bridge the zone into lm-sensors.
+CONFIG_HWMON=y
+CONFIG_THERMAL_HWMON=y
+
+# Safe despite the NPU firmware refusing the op: patch 921 degrades that
+# refusal to a warning instead of failing all hardware offload.
+CONFIG_NET_AIROHA_FLOW_STATS=y
+
+# The an7581 dtsi declares the EIP-93 crypto engine and an7583 already
+# builds the driver; enables AES/SHA/authenc offload via the crypto API.
+CONFIG_CRYPTO_HW=y
+CONFIG_CRYPTO_DEV_EIP93=y

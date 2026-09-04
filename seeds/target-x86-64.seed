@@ -1,0 +1,10 @@
+# Customization of build config for x86_64 (Machine Specific)
+
+CONFIG_KERNEL_CFLAGS="-pipe -march=alderlake -mtune=alderlake"
+CONFIG_TARGET_MULTI_PROFILE=n
+CONFIG_TARGET_OPTIMIZATION="-O2 -pipe -march=alderlake -mtune=alderlake"
+CONFIG_TARGET_x86_64=y
+
+CONFIG_LIBC_USE_GLIBC=y
+CONFIG_LIBC_USE_MUSL=n
+CONFIG_TARGET_ROOTFS_PARTSIZE=384
