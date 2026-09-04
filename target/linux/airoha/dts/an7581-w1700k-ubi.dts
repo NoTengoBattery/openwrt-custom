@@ -9,7 +9,7 @@
 #include "an7581-npu-mt7996.dtsi"
 
 / {
-	model = "Gemtek W1700K (OpenWrt U-Boot layout)";
+	model = "Gemtek MXF-W1700K2 (OpenWrt U-Boot layout)";
 	compatible = "gemtek,w1700k-ubi", "airoha,an7581", "airoha,en7581";
 
 	aliases {
