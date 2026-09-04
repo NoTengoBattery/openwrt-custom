@@ -590,10 +590,11 @@ export function scan(dev) {
 		return null;
 	}
 
+	/* a tri-band sweep with DFS and 6 GHz dwells can take well over 30s */
 	let res = nl80211.waitfor([
 		nl80211.const.NL80211_CMD_NEW_SCAN_RESULTS,
 		nl80211.const.NL80211_CMD_SCAN_ABORTED
-	], 5000);
+	], 60000);
 
 	if (!res) {
 		warn("Netlink error while awaiting scan results on " + dev + ": " + nl80211.error() + "\n");
