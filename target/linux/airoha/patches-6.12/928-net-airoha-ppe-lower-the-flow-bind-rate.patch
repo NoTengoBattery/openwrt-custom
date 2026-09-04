@@ -1,0 +1,143 @@
+From: Oever González <software@notengobattery.com>
+Date: Thu, 04 Sep 2026 08:40:00 -0600
+Subject: [PATCH] net: airoha: ppe: lower the flow bind rate and make it tunable
+
+The PPE accelerates a flow only once the flow exceeds REG_PPE_BIND_RATE
+packets. A flow that stays below the threshold is never bound, so every
+one of its packets is handled by the CPU for the whole life of the flow,
+while faster flows beside it run in hardware.
+
+The vendor value of 30 sits above the packet rate of most interactive
+traffic, so a game, a VoIP call or a latency probe never binds. On its
+own that costs little, because the CPU keeps up. Beside an offloaded
+bulk transfer it costs 60-250 ms on the flow that did not bind.
+
+Measured with a 150 ms probe running against an offloaded transfer, the
+loaded p90 is 157 ms at a threshold of 32 and 15 ms at 8. A bufferbloat
+test that grades B at the default, with a periodic spike clearly visible
+in the latency trace, grades A+ at 8 with +1 ms loaded latency in both
+directions.
+
+Lower the default to 8. That covers interactive packet rates while
+leaving genuinely sporadic flows such as DNS and NTP unbound, so they do
+not take table entries. Thresholds between 1 and 10 measured the same on
+latency, so the exact value is not critical; 8 is the smallest that
+still leaves sporadic flows alone, which keeps the number of bound
+entries down and with it the window in which an entry can outlive the
+station it points at.
+
+Add a debugfs "bind_rate" knob under the existing ppe directory so the
+threshold can be retuned on a live device without a rebuild. Writes
+apply immediately to every engine, and the compiled-in default returns
+on the next init. The register write is shared between init and the knob
+so the two cannot drift apart.
+
+Signed-off-by: Oever González <software@notengobattery.com>
+---
+--- a/drivers/net/ethernet/airoha/airoha_ppe.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe.c
+@@ -97,6 +97,35 @@
+ 		      __field_prep(DFT_CPORT_MASK(fport), fe_cpu_port));
+ }
+ 
++/* Flows below this packet rate are never bound and stay on the CPU for life. */
++#define AIROHA_PPE_BIND_RATE_DEFAULT	8
++
++static void airoha_ppe_write_bind_rate(struct airoha_eth *eth, int index,
++				       u16 rate)
++{
++	airoha_fe_rmw(eth, REG_PPE_BIND_RATE(index),
++		      PPE_BIND_RATE_L2B_BIND_MASK |
++		      PPE_BIND_RATE_BIND_MASK,
++		      FIELD_PREP(PPE_BIND_RATE_L2B_BIND_MASK, rate) |
++		      FIELD_PREP(PPE_BIND_RATE_BIND_MASK, rate));
++}
++
++#ifdef CONFIG_DEBUG_FS
++void airoha_ppe_set_bind_rate(struct airoha_eth *eth, u16 rate)
++{
++	int i;
++
++	for (i = 0; i < eth->soc->num_ppe; i++)
++		airoha_ppe_write_bind_rate(eth, i, rate);
++}
++
++u16 airoha_ppe_get_bind_rate(struct airoha_eth *eth)
++{
++	return FIELD_GET(PPE_BIND_RATE_BIND_MASK,
++			 airoha_fe_rr(eth, REG_PPE_BIND_RATE(0)));
++}
++#endif
++
+ static void airoha_ppe_hw_init(struct airoha_ppe *ppe)
+ {
+ 	u32 sram_ppe_num_data_entries = PPE_SRAM_NUM_ENTRIES, sram_num_entries;
+@@ -157,11 +186,8 @@
+ 			      FIELD_PREP(PPE_DRAM_TB_NUM_ENTRY_MASK,
+ 					 dram_num_entries));
+ 
+-		airoha_fe_rmw(eth, REG_PPE_BIND_RATE(i),
+-			      PPE_BIND_RATE_L2B_BIND_MASK |
+-			      PPE_BIND_RATE_BIND_MASK,
+-			      FIELD_PREP(PPE_BIND_RATE_L2B_BIND_MASK, 0x1e) |
+-			      FIELD_PREP(PPE_BIND_RATE_BIND_MASK, 0x1e));
++		airoha_ppe_write_bind_rate(eth, i,
++					   AIROHA_PPE_BIND_RATE_DEFAULT);
+ 
+ 		airoha_fe_wr(eth, REG_PPE_HASH_SEED(i), PPE_HASH_SEED);
+ 		airoha_fe_clear(eth, REG_PPE_PPE_FLOW_CFG(i),
+--- a/drivers/net/ethernet/airoha/airoha_ppe_debugfs.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe_debugfs.c
+@@ -167,6 +167,31 @@
+ }
+ DEFINE_SHOW_ATTRIBUTE(airoha_ppe_debugfs_foe_all);
+ 
++static int airoha_ppe_debugfs_bind_rate_get(void *data, u64 *val)
++{
++	struct airoha_ppe *ppe = data;
++
++	*val = airoha_ppe_get_bind_rate(ppe->eth);
++
++	return 0;
++}
++
++static int airoha_ppe_debugfs_bind_rate_set(void *data, u64 val)
++{
++	struct airoha_ppe *ppe = data;
++
++	if (!val || val > U16_MAX)
++		return -EINVAL;
++
++	airoha_ppe_set_bind_rate(ppe->eth, val);
++
++	return 0;
++}
++
++DEFINE_DEBUGFS_ATTRIBUTE(airoha_ppe_debugfs_bind_rate_fops,
++			 airoha_ppe_debugfs_bind_rate_get,
++			 airoha_ppe_debugfs_bind_rate_set, "%llu\n");
++
+ static int airoha_ppe_debugfs_foe_bind_show(struct seq_file *m, void *private)
+ {
+ 	return airoha_ppe_debugfs_foe_show(m, private, true);
+@@ -180,6 +205,8 @@
+ 			    &airoha_ppe_debugfs_foe_all_fops);
+ 	debugfs_create_file("bind", 0444, ppe->debugfs_dir, ppe,
+ 			    &airoha_ppe_debugfs_foe_bind_fops);
++	debugfs_create_file("bind_rate", 0600, ppe->debugfs_dir, ppe,
++			    &airoha_ppe_debugfs_bind_rate_fops);
+ 
+ 	return 0;
+ }
+--- a/drivers/net/ethernet/airoha/airoha_eth.h
++++ b/drivers/net/ethernet/airoha/airoha_eth.h
+@@ -726,6 +726,9 @@
+ 				    struct airoha_foe_stats64 *stats);
+ 
+ #ifdef CONFIG_DEBUG_FS
++void airoha_ppe_set_bind_rate(struct airoha_eth *eth, u16 rate);
++u16 airoha_ppe_get_bind_rate(struct airoha_eth *eth);
++
+ int airoha_ppe_debugfs_init(struct airoha_ppe *ppe);
+ #else
+ static inline int airoha_ppe_debugfs_init(struct airoha_ppe *ppe)
