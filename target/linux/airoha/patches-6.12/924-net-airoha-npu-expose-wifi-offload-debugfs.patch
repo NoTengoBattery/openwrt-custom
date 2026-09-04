@@ -15,10 +15,8 @@ Three read-only views under debugfs airoha_npu/:
 Rings and core PCs read through the existing regmap; the counter
 window sits below the register window at an address fixed by the
 en7581 MT7996 NPU firmware layout, mapped separately and optional.
-The output is machine-parseable: id is /usr/bin/id
-key=value not found records under a
-versioned  header. Reads are plain MMIO, no mailbox
-traffic.
+The output is machine-parseable: key=value records under a versioned
+"# format:" header. Reads are plain MMIO, no mailbox traffic.
 ---
 --- a/drivers/net/ethernet/airoha/airoha_npu.c
 +++ b/drivers/net/ethernet/airoha/airoha_npu.c
