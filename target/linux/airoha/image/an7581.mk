@@ -69,3 +69,57 @@ define Device/airoha_an7581-evb-emmc
   ARTIFACTS := preloader.bin bl31-uboot.fip
 endef
 TARGET_DEVICES += airoha_an7581-evb-emmc
+
+define Device/gemtek_w1700k-ubi
+  DEVICE_VENDOR := Gemtek
+  DEVICE_MODEL := MXF-W1700K2
+  DEVICE_VARIANT := UBI
+  DEVICE_ALT0_VENDOR := CenturyLink
+  DEVICE_ALT0_MODEL := MXF-W1700K2
+  DEVICE_ALT0_VARIANT := UBI
+  DEVICE_ALT1_VENDOR := Lumen
+  DEVICE_ALT1_MODEL := MXF-W1700K2
+  DEVICE_ALT1_VARIANT := UBI
+  DEVICE_ALT2_VENDOR := Quantum Fiber
+  DEVICE_ALT2_MODEL := MXF-W1700K2
+  DEVICE_ALT2_VARIANT := UBI
+  DEVICE_DTS := an7581-w1700k-ubi
+  DEVICE_COMPAT_VERSION := 2.0
+  DEVICE_COMPAT_MESSAGE := Partition table has been changed to cooperate \
+       with the vendor bootloader with regard to the BMT/BBT partition at \
+       the end of flash. A reinstall including corrected chainloader is needed.
+  # mdio-tools: the C45 10G PHYs read phy_id 0x0 over sysfs; need a live tool.
+  DEVICE_PACKAGES := airoha-en7581-mt7996-npu-firmware \
+		    fitblk kmod-i2c-an7581 kmod-hwmon-nct7802 \
+		    kmod-mdio-netlink kmod-mt7996-firmware \
+		    kmod-phy-rtl8261ce mdio-tools
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  UBOOTENV_IN_UBI := 1
+  KERNEL_IN_UBI := 1
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 128k
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  IMAGES := sysupgrade.itb
+  IMAGE/sysupgrade.itb := append-kernel | fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  ARTIFACTS := chainload-uboot.itb
+  ARTIFACT/chainload-uboot.itb := an7581-chainloader gemtek_w1700k
+  SOC := an7581
+endef
+TARGET_DEVICES += gemtek_w1700k-ubi
+
+# Same DTB/kernel, rootfs also carries the installer payload; build after
+# gemtek_w1700k-ubi. Initramfs-only, so preinit never sees a flashable image.
+define Device/gemtek_w1700k-ubi-installer
+  $(Device/gemtek_w1700k-ubi)
+  DEVICE_VARIANT := UBI Installer
+  # Both payload images overrun the 62 MiB to the first NPU carveout
+  # (0x84000000); land above every reserved-memory region instead (ends 0x90e067ff).
+  KERNEL_LOADADDR := 0x92000000
+  DEVICE_PACKAGES += notengobattery-w1700k-installer
+  IMAGES :=
+  ARTIFACTS :=
+endef
+TARGET_DEVICES += gemtek_w1700k-ubi-installer
