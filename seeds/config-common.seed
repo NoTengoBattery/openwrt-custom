@@ -17,6 +17,11 @@ CONFIG_USE_GC_SECTIONS=y
 CONFIG_USE_LTO=y
 CONFIG_USE_MOLD=y
 
+# Nothing is built from these feeds; keep them out of the image's distfeeds.list
+CONFIG_FEED_routing=n
+CONFIG_FEED_telephony=n
+CONFIG_FEED_video=n
+
 CONFIG_TARGET_INITRAMFS_COMPRESSION_ZSTD=y
 CONFIG_TARGET_ROOTFS_TARGZ=y
 
