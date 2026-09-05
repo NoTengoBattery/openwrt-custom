@@ -14,8 +14,9 @@ per-index reset, the flow stats update, and the FLOW_CLS_STATS reader.
 Also reject a zero stats address, which firmware can return while
 acking the op without implementing it.
 
-Without counters, offload userspace that polls them (e.g. bridger)
-sees permanently-idle flows and churns its idle timeout.
+Without counters, FLOW_CLS_STATS reports zero bytes and packets.
+Idle detection is unaffected: the driver fills lastused from the
+PPE bind timestamp, which does not depend on the stats table.
 
 --- a/drivers/net/ethernet/airoha/airoha_npu.c
 +++ b/drivers/net/ethernet/airoha/airoha_npu.c
